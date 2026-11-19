@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mix Client — a faster Minecraft client</title>
+<meta name="description" content="Mix Client is a lightweight Minecraft client with built-in performance mods, a custom HUD and one-click installs for Windows, macOS and Linux.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230b0f0c'/%3E%3Crect x='7' y='7' width='8' height='8' fill='%2357e08a'/%3E%3Crect x='17' y='7' width='8' height='8' fill='%2334a866'/%3E%3Crect x='7' y='17' width='8' height='8' fill='%2334a866'/%3E%3Crect x='17' y='17' width='8' height='8' fill='%23a6f7c1'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="#top">
+      <!-- Placeholder logo: pure CSS, swap for <img src="logo.svg" alt="Mix Client"> once the real mark exists. -->
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <span class="brand-name">Mix<span>Client</span></span>
+    </a>
+    <nav class="nav-links" aria-label="Main">
+      <a href="#features">Features</a>
+      <a href="#install">Install</a>
+      <a href="https://github.com/Mix-Studios" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+    <a class="btn btn-ghost nav-cta" href="#download">Download</a>
+  </div>
+</header>
+
+<main id="top">
+
+  <section class="hero">
+    <div class="hero-copy">
+      <p class="eyebrow">
+        <span class="dot" aria-hidden="true"></span>
+        Minecraft client · 1.8.9 – 1.21
+      </p>
+      <h1>Play Minecraft<br><span class="accent">without the lag.</span></h1>
+      <p class="lede">
+        Mix Client is a clean, lightweight client built on top of everything players
+        actually use: frame-rate boosting mods, a customisable HUD, cosmetics and
+        instant version switching — all in one installer.
+      </p>
+
+      <div class="download" id="download">
+        <a class="btn btn-download" id="downloadBtn"
+           href="https://github.com/Mix-Studios/Mix-Client/releases/latest"
+           rel="noopener">
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square"><path d="M12 4v10"/><path d="M7 11l5 5 5-5"/><path d="M5 19h14"/></svg>
+          </span>
+          <span class="btn-text">
+            <strong id="downloadLabel">Download Mix Client</strong>
+            <small id="downloadMeta">Finding the latest build…</small>
+          </span>
+        </a>
+        <p class="download-note">
+          Downloads the newest installer straight from the latest release — no redirects,
+          no extra clicks.
+        </p>
+      </div>
+
+      <ul class="hero-facts">
+        <li><span>Windows</span></li>
+        <li><span>macOS</span></li>
+        <li><span>Linux</span></li>
+        <li class="open-source"><a href="https://github.com/Mix-Studios" target="_blank" rel="noopener">Open source</a></li>
+      </ul>
+    </div>
+
+    <!-- Stylised UI mock drawn in CSS, not a screenshot. Replace this block with a real
+         launcher image when there is one: <img src="launcher.png" alt="Mix Client launcher"> -->
+    <div class="hero-art" aria-hidden="true">
+      <div class="client-window">
+        <div class="client-titlebar">
+          <span class="traffic"><i></i><i></i><i></i></span>
+          <span class="client-title">MixClient 1.21.4 · Fabric</span>
+        </div>
+        <div class="client-body">
+          <div class="client-side">
+            <span class="side-item active">Play</span>
+            <span class="side-item">Cosmetics</span>
+            <span class="side-item">Mods</span>
+            <span class="side-item">Settings</span>
+          </div>
+          <div class="client-main">
+            <div class="stat-row">
+              <div class="stat"><b>248</b><small>FPS</small></div>
+              <div class="stat"><b>12 ms</b><small>Ping</small></div>
+              <div class="stat"><b>1.9 GB</b><small>RAM</small></div>
+            </div>
+            <div class="graph">
+              <i style="--h:38%"></i><i style="--h:52%"></i><i style="--h:44%"></i>
+              <i style="--h:68%"></i><i style="--h:74%"></i><i style="--h:61%"></i>
+              <i style="--h:83%"></i><i style="--h:79%"></i><i style="--h:92%"></i>
+              <i style="--h:88%"></i><i style="--h:96%"></i><i style="--h:91%"></i>
+            </div>
+            <div class="version-chip">Selected version <b>1.21.4</b></div>
+          </div>
+        </div>
+      </div>
+      <div class="glow" aria-hidden="true"></div>
+    </div>
+  </section>
+
+  <section class="features" id="features">
+    <h2 class="section-title">Everything you need, nothing you don't</h2>
+    <p class="section-sub">One installer. Every feature stays out of your way until you want it.</p>
+
+    <div class="grid">
+      <article class="card">
+        <span class="card-icon">⚡</span>
+        <h3>Frame-rate first</h3>
+        <p>Rendering and entity optimisations ship enabled out of the box, so low-end laptops and high-refresh desktops both gain frames.</p>
+      </article>
+      <article class="card">
+        <span class="card-icon">🧩</span>
+        <h3>Mod-ready</h3>
+        <p>Drop in Fabric mods or use the built-in browser. Conflicts are flagged before you launch, not after the crash.</p>
+      </article>
+      <article class="card">
+        <span class="card-icon">🎯</span>
+        <h3>Custom HUD</h3>
+        <p>Drag and drop every element — keystrokes, CPS, armour, potions and ping — then save separate layouts per profile.</p>
+      </article>
+      <article class="card">
+        <span class="card-icon">🎨</span>
+        <h3>Cosmetics</h3>
+        <p>Capes, wings and hats that render for everyone on the client, with a toggle for a fully vanilla look.</p>
+      </article>
+      <article class="card">
+        <span class="card-icon">🪶</span>
+        <h3>Light footprint</h3>
+        <p>No background services and no bundled launchers. Mix Client installs to its own folder and leaves your worlds alone.</p>
+      </article>
+      <article class="card">
+        <span class="card-icon">🔄</span>
+        <h3>One-click updates</h3>
+        <p>The client checks for a new build on launch and updates in place, keeping your settings and mods.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="install" id="install">
+    <h2 class="section-title">Installing takes about a minute</h2>
+    <div class="steps">
+      <div class="step">
+        <span class="step-num">1</span>
+        <h3>Download</h3>
+        <p>Hit the button above. You get the newest installer directly from the project's latest release.</p>
+      </div>
+      <div class="step">
+        <span class="step-num">2</span>
+        <h3>Run it</h3>
+        <p>Open the installer and pick a folder. Windows may ask you to confirm — the build is unsigned, so choose “More info → Run anyway”.</p>
+      </div>
+      <div class="step">
+        <span class="step-num">3</span>
+        <h3>Play</h3>
+        <p>Sign in with your Microsoft account, pick a version and launch. Your existing worlds and servers are already there.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta" aria-labelledby="cta-title">
+    <h2 id="cta-title">Ready when you are</h2>
+    <p>Free and open source. The latest build is one click away.</p>
+    <a class="btn btn-download" id="ctaDownload"
+       href="https://github.com/Mix-Studios/Mix-Client/releases/latest" rel="noopener">
+      <span class="btn-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square"><path d="M12 4v10"/><path d="M7 11l5 5 5-5"/><path d="M5 19h14"/></svg>
+      </span>
+      <span class="btn-text">
+        <strong id="ctaLabel">Download Mix Client</strong>
+        <small id="ctaMeta">Windows · macOS · Linux</small>
+      </span>
+    </a>
+  </section>
+</main>
+
+<footer class="footer">
+  <p>Mix Client is a community project. Not affiliated with Mojang or Microsoft.</p>
+  <p class="footer-links">
+    <a href="https://github.com/Mix-Studios" target="_blank" rel="noopener">Source code</a>
+    <a href="https://github.com/Mix-Studios/client-mix/releases" target="_blank" rel="noopener">All releases</a>
+    <a href="https://github.com/Mix-Studios/Mix-Client/issues" target="_blank" rel="noopener">Report a bug</a>
+  </p>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
