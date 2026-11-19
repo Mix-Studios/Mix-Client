@@ -1,0 +1,6 @@
+# Freebuff Desktop project files
+.freebuff/
+
+# macOS AppleDouble metadata files (created on network shares)
+._*
+.DS_Store
