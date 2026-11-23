@@ -158,8 +158,8 @@
           </div>
           <div class="step">
             <span class="step-num">02</span>
-            <h3>RUN THE INSTALLER</h3>
-            <p>Windows asks for “More info → Run anyway”; macOS needs a right-click → Open the first time; Linux installs with your package tool.</p>
+            <h3>INSTALL IT</h3>
+            <p>Open the installer and follow the prompts. It bundles its own Java runtime, so nothing else is needed. Windows asks for “More info → Run anyway”; macOS needs a right-click → Open the first time; Linux installs the .deb or .rpm, or runs the AppImage.</p>
           </div>
           <div class="step">
             <span class="step-num">03</span>
@@ -167,6 +167,12 @@
             <p>Use your Microsoft account, choose a version and launch. Your existing worlds are already there.</p>
           </div>
         </div>
+
+        <p class="play-note">
+          Downloaded the plain jar instead? That one is not an installer: it needs Java 17 or newer
+          (<code class="inline-code">java -version</code> to check). Double-click it, or run
+          <code class="inline-code">java -jar MixClient-*-all.jar</code> from the folder you saved it in.
+        </p>
       </section>
 
       <!-- Release integrity: SHA-256 from checksums.txt plus GitHub build provenance -->
@@ -219,6 +225,10 @@
             <p>Releases tagged as pre-releases (or named like <code class="inline-code">Test</code> / <code class="inline-code">1.2.0-beta</code>) are labelled <strong>TEST BUILD</strong> on this page. They are newer and less tested; the badge switches to <strong>RELEASE BUILD</strong> for a normal release.</p>
           </details>
           <details>
+            <summary>Which file should I download?</summary>
+            <p>Take the one for your system: a Windows installer, a macOS disk image (Apple silicon or Intel), or a Linux package. The jar is the fallback for everything else and the only file that needs Java installed.</p>
+          </details>
+          <details>
             <summary>Which Minecraft versions work?</summary>
             <p>Modern releases plus 1.8.9 for PvP. Switch versions from the launcher; each keeps its own mods and settings.</p>
           </details>
@@ -228,7 +238,7 @@
           </details>
           <details>
             <summary>Do I need Java installed?</summary>
-            <p>Not for the installers — they bundle their own runtime. Only the plain jar needs Java 17 or newer.</p>
+            <p>Only if you download the plain jar. The installers for Windows, macOS and Linux bundle their own Java runtime, so they start without anything else installed. The jar is a single file that runs on any OS but needs Java 17 or newer first; if <code class="inline-code">java -version</code> fails or reports an older version, install a current JDK (Adoptium Temurin is free) and try again.</p>
           </details>
           <details>
             <summary>Why does the installer warn me?</summary>
