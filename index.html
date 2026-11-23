@@ -29,6 +29,7 @@
     <nav class="topnav" aria-label="Main">
       <a href="#features">Features</a>
       <a href="#install">Install</a>
+      <a href="#verify">Verify</a>
       <a href="#faq">FAQ</a>
       <a href="https://github.com/Mix-Studios" target="_blank" rel="noopener">GitHub</a>
     </nav>
@@ -156,6 +157,42 @@
     </div>
   </section>
 
+  <!-- Release integrity: SHA-256 from checksums.txt plus GitHub build provenance -->
+  <section class="section" id="verify">
+    <h2 class="section-title">Verify your download</h2>
+    <p class="section-sub">
+      Builds are unsigned, so every release publishes a <code class="inline-code">checksums.txt</code> and a
+      GitHub build provenance attestation. Compare the hash below with the file you downloaded before you run it.
+    </p>
+
+    <div class="verify">
+      <div class="verify-card">
+        <span class="verify-label">
+          SHA-256<span class="verify-sep" aria-hidden="true">·</span><span data-sha-file>latest installer</span>
+        </span>
+        <div class="verify-hash-row">
+          <code class="verify-hash" data-sha-hash aria-live="polite">Reading checksums.txt from the latest release…</code>
+          <button class="verify-copy" type="button" data-sha-copy hidden>COPY</button>
+        </div>
+        <a class="verify-link" data-sha-link
+           href="https://github.com/Mix-Studios/client-mix/releases/latest" target="_blank" rel="noopener">
+          checksums.txt and attestations on GitHub →
+        </a>
+      </div>
+
+      <div class="verify-cmds">
+        <h3>CHECK IT YOURSELF</h3>
+        <p>The output has to match the hash above, character for character.</p>
+        <p class="verify-os">Windows</p>
+        <pre><code>certutil -hashfile <span data-sha-name>MixClient-*.jar</span> SHA256</code></pre>
+        <p class="verify-os">macOS / Linux</p>
+        <pre><code>shasum -a 256 <span data-sha-name>MixClient-*.jar</span></code></pre>
+        <p class="verify-os">Provenance, with the GitHub CLI</p>
+        <pre><code>gh attestation verify <span data-sha-name>MixClient-*.jar</span> --repo Mix-Studios/client-mix</code></pre>
+      </div>
+    </div>
+  </section>
+
   <section class="section" id="faq">
     <h2 class="section-title">Questions</h2>
     <div class="faq">
@@ -169,7 +206,7 @@
       </details>
       <details>
         <summary>Where do the downloads come from?</summary>
-        <p>The download button asks GitHub for the newest published release and links straight to that installer file. Nothing is re-hosted.</p>
+        <p>The download button asks GitHub for the newest published release and links straight to that installer file. Nothing is re-hosted. Every release also publishes a <code class="inline-code">checksums.txt</code>, and the build carries a GitHub build provenance attestation — see <a href="#verify">Verify your download</a>.</p>
       </details>
       <details>
         <summary>Do I need Java installed?</summary>

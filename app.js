@@ -9,6 +9,10 @@
  *
  * /releases/latest ignores pre-releases, so if it has nothing usable we fall back
  * to listing releases and take the newest one that actually has an installer.
+ *
+ * The same release carries a checksums.txt (sha256sum layout). Once the installer
+ * is picked we read that file and show the matching SHA-256 in the "verify"
+ * section, so visitors can check an unsigned build themselves.
  */
 (() => {
   // Builds live in their own repository, separate from this site.
@@ -20,6 +24,16 @@
 
   const buttons = [...document.querySelectorAll("[data-download]")];
   const versionChip = document.getElementById("versionChip");
+
+  // Release integrity elements (see the "verify" section in index.html).
+  const shaHashEl = document.querySelector("[data-sha-hash]");
+  const shaFileEl = document.querySelector("[data-sha-file]");
+  const shaCopyEl = document.querySelector("[data-sha-copy]");
+  const shaLinkEl = document.querySelector("[data-sha-link]");
+  const shaNameEls = [...document.querySelectorAll("[data-sha-name]")];
+
+  // Attachments that hold the hashes rather than a download.
+  const CHECKSUM_FILE = /^(checksums?|sha-?256sums?)(\.txt|\.sha256)?$/i;
 
   const OS = detectOS();
   const OS_LABEL = { windows: "Windows", mac: "macOS", linux: "Linux", other: "your system" };
@@ -96,6 +110,65 @@
     return mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb < 10 ? mb.toFixed(1) : Math.round(mb)} MB`;
   }
 
+  function findChecksumAsset(assets) {
+    return (assets || []).find(
+      (a) => a && a.name && a.browser_download_url && CHECKSUM_FILE.test(a.name),
+    ) || null;
+  }
+
+  // checksums.txt is written by `sha256sum <file>`: "<64 hex chars>  <filename>".
+  function parseChecksum(text, filename) {
+    const wanted = String(filename || "").toLowerCase();
+    for (const line of String(text || "").split(/\r?\n/)) {
+      const match = line.trim().match(/^([a-f0-9]{64})\s+\*?(.+)$/i);
+      if (match && match[2].trim().toLowerCase() === wanted) return match[1].toLowerCase();
+    }
+    return null;
+  }
+
+  function setChecksumMissing(message) {
+    if (!shaHashEl) return;
+    shaHashEl.dataset.state = "missing";
+    shaHashEl.textContent = message;
+    delete shaHashEl.dataset.hash;
+    if (shaCopyEl) shaCopyEl.hidden = true;
+  }
+
+  async function loadChecksum(release, asset) {
+    if (!shaHashEl) return;
+
+    const checksums = findChecksumAsset(release && release.assets);
+    const releaseUrl = release && release.tag_name
+      ? `https://github.com/${RELEASES_REPO}/releases/tag/${encodeURIComponent(release.tag_name)}`
+      : RELEASES_URL;
+    if (shaLinkEl) shaLinkEl.href = checksums ? checksums.browser_download_url : releaseUrl;
+
+    if (!asset) return;
+
+    if (shaFileEl) shaFileEl.textContent = asset.name;
+    shaNameEls.forEach((el) => { el.textContent = asset.name; });
+
+    if (!checksums) {
+      setChecksumMissing("This release has no checksums.txt yet.");
+      return;
+    }
+
+    try {
+      const res = await fetch(checksums.browser_download_url, { cache: "no-store" });
+      if (!res.ok) throw new Error(`checksums.txt: HTTP ${res.status}`);
+
+      const hash = parseChecksum(await res.text(), asset.name);
+      if (!hash) throw new Error("installer missing from checksums.txt");
+
+      delete shaHashEl.dataset.state;
+      shaHashEl.textContent = hash;
+      shaHashEl.dataset.hash = hash;
+      if (shaCopyEl) shaCopyEl.hidden = false;
+    } catch (err) {
+      setChecksumMissing("Couldn't read checksums.txt — open it on the release page.");
+    }
+  }
+
   function setButtons(url, { state, label, meta } = {}) {
     buttons.forEach((el) => {
       el.href = url;
@@ -121,6 +194,7 @@
         label: "NO BUILDS YET",
         meta: `Release ${version} has no installer yet`,
       });
+      loadChecksum(release, null);
       return;
     }
 
@@ -133,6 +207,8 @@
       versionChip.textContent = version;
       versionChip.title = `Latest release: ${version}`;
     }
+
+    loadChecksum(release, asset);
   }
 
   function readCache() {
@@ -200,6 +276,20 @@
         meta: "Couldn't reach GitHub — try again in a moment",
       });
     }
+  }
+
+  if (shaCopyEl && shaHashEl) {
+    shaCopyEl.addEventListener("click", async () => {
+      const hash = shaHashEl.dataset.hash;
+      if (!hash) return;
+      try {
+        await navigator.clipboard.writeText(hash);
+        shaCopyEl.textContent = "COPIED";
+        setTimeout(() => { shaCopyEl.textContent = "COPY"; }, 1600);
+      } catch (err) {
+        /* clipboard blocked — the hash is still selectable */
+      }
+    });
   }
 
   // A resolved asset URL starts the download immediately.
