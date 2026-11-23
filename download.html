@@ -383,6 +383,7 @@
     function applyRelease(release) {
       applyReleaseText(release);
       state.release = release;
+      lastApplied = Date.now();
       state.tag = release.tag_name || state.tag;
       state.picks = picksFor(release);
 
@@ -401,7 +402,54 @@
       applyPick(clicked || hinted || primaryPick(state.picks, OS, null));
     }
 
-    async function boot() {
+    // Keep the page current for a tab left open across a release, the same way
+    // the play screen does: re-check on a timer and when the tab comes back.
+    const AUTO_REFRESH_MS = 5 * 60 * 1000;
+    const VISIBILITY_MIN_MS = 60 * 1000;
+    let inFlight = null;
+    let lastApplied = 0;
+
+    async function refresh({ force = false } = {}) {
+      if (inFlight) return inFlight;
+
+      inFlight = (async () => {
+        try {
+          if (force) {
+            try {
+              sessionStorage.removeItem(R.CACHE_KEY);
+            } catch (err) {
+              /* storage disabled — nothing cached anyway */
+            }
+          }
+
+          let release = force ? null : readCache();
+          if (!release) {
+            release = await resolveRelease();
+            if (release === undefined) throw new Error("GitHub API unavailable");
+            if (release) writeCache(release);
+          }
+
+          if (!release) {
+            if (!state.current && detailEl) detailEl.textContent = "No release is published yet.";
+            return;
+          }
+
+          applyRelease(release);
+        } catch (err) {
+          if (!state.current && detailEl) {
+            detailEl.textContent = "Couldn't reach GitHub — use the direct link, or reload in a moment.";
+          }
+        }
+      })();
+
+      try {
+        await inFlight;
+      } finally {
+        inFlight = null;
+      }
+    }
+
+    function boot() {
       // Paint the file the play screen handed over, then correct it from GitHub.
       if (wantedFile) {
         applyPick({
@@ -419,26 +467,18 @@
         setKind({ id: hintKind, label: hintKind === "test" ? "TEST BUILD" : "RELEASE BUILD" });
       }
 
-      try {
-        let release = readCache();
-        if (!release) {
-          release = await resolveRelease();
-          if (release === undefined) throw new Error("GitHub API unavailable");
-          if (release) writeCache(release);
-        }
-
-        if (!release) {
-          if (!state.current && detailEl) detailEl.textContent = "No release is published yet.";
-          return;
-        }
-
-        applyRelease(release);
-      } catch (err) {
-        if (!state.current && detailEl) {
-          detailEl.textContent = "Couldn't reach GitHub — use the direct link, or reload in a moment.";
-        }
-      }
+      refresh();
     }
+
+    setInterval(() => { refresh({ force: true }); }, AUTO_REFRESH_MS);
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) return;
+      if (Date.now() - lastApplied < VISIBILITY_MIN_MS) return;
+      refresh({ force: true });
+    });
+
+    window.addEventListener("online", () => { refresh({ force: true }); });
 
     boot();
   })();
