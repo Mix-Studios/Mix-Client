@@ -14,7 +14,7 @@
 <div class="app" id="top">
 
   <div class="titlebar">
-    <span class="titlebar-title">MixClient 1.0.0</span>
+    <span class="titlebar-title" data-titlebar-title>MixClient</span>
     <span class="titlebar-hint">PvP launcher</span>
   </div>
 
@@ -40,7 +40,7 @@
 
       <div class="sidebar-foot">
         <span>Microsoft sign-in inside the client</span>
-        <span>v1.0.0</span>
+        <span data-sidebar-version></span>
       </div>
     </aside>
 
@@ -163,6 +163,16 @@
     const assetUrl = (name) => tag
       ? `https://github.com/${RELEASES_REPO}/releases/download/${encodeURIComponent(tag)}/${encodeURIComponent(name)}`
       : `https://github.com/${RELEASES_REPO}/releases/latest`;
+
+    // The title bar and sidebar footer name the release this download belongs to.
+    const bareVersion = version ? String(version).replace(/^v/i, "") : "";
+    const titlebarEl = document.querySelector("[data-titlebar-title]");
+    const sidebarVersionEl = document.querySelector("[data-sidebar-version]");
+    if (titlebarEl) titlebarEl.textContent = bareVersion ? `MixClient ${bareVersion}` : "MixClient";
+    if (sidebarVersionEl) {
+      const tag = version ? String(version) : "";
+      sidebarVersionEl.textContent = /^v/i.test(tag) ? tag : (/^\d/.test(tag) ? `v${tag}` : tag);
+    }
 
     if (kindEl && (kind === "test" || kind === "release")) {
       kindEl.hidden = false;

@@ -33,6 +33,8 @@
 
   const buttons = [...document.querySelectorAll("[data-download]")];
   const versionChip = document.getElementById("versionChip");
+  const titlebarTitleEl = document.querySelector("[data-titlebar-title]");
+  const sidebarVersionEl = document.querySelector("[data-sidebar-version]");
   const kindEls = [...document.querySelectorAll("[data-build-kind]")];
   const platformsEl = document.querySelector("[data-platforms]");
 
@@ -216,6 +218,20 @@
     if (buildDetailEl) buildDetailEl.textContent = detail;
   }
 
+  // The window chrome names the same release the chip does, so nothing on the
+  // page has to be edited when a new version is published.
+  function setChromeVersion(version) {
+    const bare = version ? String(version).replace(/^v/i, "") : "";
+    if (titlebarTitleEl) {
+      titlebarTitleEl.textContent = bare ? `MixClient ${bare}` : "MixClient";
+    }
+    if (sidebarVersionEl) {
+      const tag = version ? String(version) : "";
+      // "v1.2.3" stays as-is, "1.2.3" gains the v, a named tag like "Test" keeps its name.
+      sidebarVersionEl.textContent = /^v/i.test(tag) ? tag : (/^\d/.test(tag) ? `v${tag}` : tag);
+    }
+  }
+
   function setKind(kind) {
     kindEls.forEach((el) => {
       if (!kind) {
@@ -367,6 +383,7 @@
     const picks = picksFor(release);
     state.picks = picks;
     setKind(kind);
+    setChromeVersion(version);
 
     if (!picks.length) {
       state.primary = null;
@@ -416,6 +433,7 @@
     state.picks = [];
     state.primary = null;
     setKind(null);
+    setChromeVersion(null);
     setButtons(DOWNLOAD_PAGE, {
       state: "empty",
       label: "NO BUILDS YET",
@@ -430,6 +448,7 @@
     state.picks = [];
     state.primary = null;
     setKind(null);
+    setChromeVersion(null);
     setButtons(DOWNLOAD_PAGE, {
       state: "empty",
       label: "OPEN LATEST RELEASE",
