@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Download instructions — Mix Client</title>
-<meta name="description" content="What to do with the Mix Client download: check the SHA-256, run the jar, and sign in with Microsoft inside the client.">
+<meta name="description" content="What to do with the Mix Client download: check the SHA-256, run the installer or jar, and sign in with Microsoft inside the client.">
 <meta name="theme-color" content="#0A246A">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23316AC5'/%3E%3Cstop offset='1' stop-color='%230A246A'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' fill='%23ECE9D8'/%3E%3Crect x='2' y='2' width='28' height='28' fill='url(%23g)'/%3E%3Ctext x='16' y='23' font-family='Tahoma,Verdana,sans-serif' font-size='18' font-weight='bold' fill='%23fff' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="styles.css">
@@ -57,7 +57,10 @@
         <div class="build-card">
           <span class="logo logo--sm" aria-hidden="true">M</span>
           <div class="build-info">
-            <span class="build-name" data-file>MixClient</span>
+            <span class="build-head">
+              <span class="build-name" data-file>MixClient</span>
+              <span class="build-kind" data-build-kind hidden>RELEASE BUILD</span>
+            </span>
             <span class="build-detail" data-detail>Starting the transfer…</span>
           </div>
           <a class="btn" data-direct href="https://github.com/Mix-Studios/client-mix/releases/latest"
@@ -78,10 +81,8 @@
           <div class="step">
             <span class="step-num">02</span>
             <h3>RUN IT</h3>
-            <p>
-              Double-click the jar, or from the folder you saved it in run
-              <code class="inline-code">java -jar <span data-cmd>MixClient-1.0.0-all.jar</span></code>.
-            </p>
+            <p data-run>Double-click the jar, or from the folder you saved it in run
+              <code class="inline-code">java -jar <span data-cmd>MixClient-0.0.0-all.jar</span></code>.</p>
           </div>
           <div class="step">
             <span class="step-num">03</span>
@@ -93,12 +94,17 @@
           </div>
         </div>
 
+        <p class="group-label">ALL FILES IN THIS RELEASE</p>
+        <div class="platforms" data-files></div>
+
         <p class="group-label">NOTES</p>
         <div class="notice">
-          <p><strong>Unsigned build.</strong> Windows SmartScreen asks for “More info → Run anyway”, and macOS
-            Gatekeeper may need a right-click → Open the first time. The jar needs Java 17 or newer.</p>
-          <p><strong>Installer in progress.</strong> A packaged .exe installer for Windows is coming soon; until it
-            ships, the jar is the download for every platform.</p>
+          <p><strong>Unsigned build.</strong> Windows SmartScreen asks for “More info → Run anyway”. macOS blocks the
+            first launch of an unsigned app: right-click MixClient in Applications and choose Open, or run
+            <code class="inline-code">xattr -dr com.apple.quarantine /Applications/MixClient.app</code>. Linux has no
+            prompt; install the .deb or .rpm with your package tool, or run the AppImage.</p>
+          <p><strong>The jar runs anywhere.</strong> Every other file bundles its own Java runtime; the plain jar
+            needs Java 17 or newer.</p>
           <p>Nothing arrived? <a data-direct href="https://github.com/Mix-Studios/client-mix/releases/latest"
              target="_blank" rel="noopener">Open the latest release</a> and download the file by hand.</p>
         </div>
@@ -115,29 +121,114 @@
 </div>
 
 <script>
-  // The download page is static; the play screen passes the resolved file in the query string.
+  // The download page is static; the play screen passes the resolved file, the
+  // release kind and every platform file in the query string.
   (() => {
+    const RELEASES_REPO = "Mix-Studios/client-mix";
+
+    const LABELS = {
+      windows: ["WINDOWS", "Windows 10 / 11 installer"],
+      "mac-arm": ["MACOS · APPLE SILICON", "M-series Macs"],
+      "mac-intel": ["MACOS · INTEL", "Intel Macs"],
+      linux: ["LINUX", "DEB, RPM or AppImage"],
+      jar: ["ANY OS · JAR", "Needs Java 17 or newer"],
+    };
+
     const params = new URLSearchParams(window.location.search);
     const file = params.get("file");
     const size = Number(params.get("size") || 0);
     const version = params.get("version");
+    const tag = params.get("tag");
+    const kind = params.get("kind");
+    const platform = params.get("platform");
+    const files = params.get("files");
 
     const fileEl = document.querySelector("[data-file]");
     const detailEl = document.querySelector("[data-detail]");
     const cmdEl = document.querySelector("[data-cmd]");
+    const runEl = document.querySelector("[data-run]");
+    const kindEl = document.querySelector("[data-build-kind]");
+    const filesEl = document.querySelector("[data-files]");
+
+    const escapeHtml = (value) => String(value == null ? "" : value).replace(/[&<>"']/g, (ch) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    }[ch]));
+
+    const sizeText = (bytes) => {
+      if (!bytes || bytes < 0) return "";
+      const mb = bytes / (1024 * 1024);
+      return mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb < 10 ? mb.toFixed(1) : Math.round(mb)} MB`;
+    };
+
+    const assetUrl = (name) => tag
+      ? `https://github.com/${RELEASES_REPO}/releases/download/${encodeURIComponent(tag)}/${encodeURIComponent(name)}`
+      : `https://github.com/${RELEASES_REPO}/releases/latest`;
+
+    if (kindEl && (kind === "test" || kind === "release")) {
+      kindEl.hidden = false;
+      kindEl.dataset.kind = kind;
+      kindEl.textContent = kind === "test" ? "TEST BUILD" : "RELEASE BUILD";
+    }
 
     if (!file) {
       if (detailEl) detailEl.textContent = "No build details passed along — use the direct link.";
-      return;
+    } else {
+      const parts = [version, size > 0 ? sizeText(size) : "", "in your Downloads folder"];
+      if (fileEl) fileEl.textContent = file;
+      if (detailEl) detailEl.textContent = parts.filter(Boolean).join(" · ");
+      if (cmdEl) cmdEl.textContent = file;
+
+      document.querySelectorAll("[data-direct]").forEach((el) => {
+        el.href = assetUrl(file);
+        el.title = `Release file · ${file}`;
+      });
+
+      // Step 02 has to match what was actually downloaded.
+      if (runEl) {
+        if (/\.jar$/i.test(file)) {
+          runEl.innerHTML = "Double-click the jar, or from the folder you saved it in run " +
+            `<code class="inline-code">java -jar ${escapeHtml(file)}</code>.`;
+        } else if (/\.(msi|exe)$/i.test(file)) {
+          runEl.textContent = "Open the installer and let it finish. Windows SmartScreen asks for More info → Run anyway the first time.";
+        } else if (/\.dmg$/i.test(file)) {
+          runEl.textContent = "Open the disk image and drag MixClient to Applications. The first launch is blocked because the app is unsigned: right-click it in Applications and choose Open.";
+        } else if (/\.(deb|rpm)$/i.test(file)) {
+          runEl.textContent = "Install it with your package tool — `sudo apt install ./<file>` on Debian/Ubuntu, `sudo dnf install <file>` on Fedora — or double-click it in your file manager.";
+        } else if (/\.appimage$/i.test(file)) {
+          runEl.textContent = "Make it executable (chmod +x <file>), then run it.";
+        }
+      }
     }
 
-    const parts = [version, size > 0 ? `${(size / (1024 * 1024)).toFixed(1)} MB` : "", "in your Downloads folder"];
-    if (fileEl) fileEl.textContent = file;
-    if (detailEl) detailEl.textContent = parts.filter(Boolean).join(" · ");
-    if (cmdEl) cmdEl.textContent = file;
-    document.querySelectorAll("[data-direct]").forEach((el) => {
-      el.title = `Latest release · ${file}`;
-    });
+    // Every platform file in the same release, with the clicked one highlighted.
+    if (filesEl) {
+      const entries = String(files || "")
+        .split("|")
+        .map((part) => part.split(":"))
+        .filter((parts) => parts.length === 3 && parts[2])
+        .map(([id, bytes, name]) => ({ id, size: Number(bytes) || 0, name }));
+
+      if (!entries.length) {
+        const empty = document.createElement("p");
+        empty.className = "platforms-empty";
+        empty.textContent = "Open the release page to see the files attached to this build.";
+        filesEl.appendChild(empty);
+      }
+
+      entries.forEach((entry) => {
+        const [label, note] = LABELS[entry.id] || [entry.id.toUpperCase(), ""];
+        const card = document.createElement("a");
+        card.className = "platform" + (entry.id === platform ? " is-current" : "");
+        card.href = assetUrl(entry.name);
+        card.title = `${entry.name}${entry.size ? ` · ${sizeText(entry.size)}` : ""}`;
+        card.innerHTML =
+          `<span class="platform-name">${escapeHtml(label)}</span>` +
+          `<span class="platform-meta">${escapeHtml(note)}</span>` +
+          `<span class="platform-file">${escapeHtml(entry.name)}` +
+          `${entry.size ? ` · ${escapeHtml(sizeText(entry.size))}` : ""}</span>`;
+        filesEl.appendChild(card);
+      });
+    }
   })();
 </script>
 

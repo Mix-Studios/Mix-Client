@@ -184,7 +184,24 @@ code, pre { font-family: var(--mono); }
 }
 
 .build-info { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.build-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .build-name { font-size: 12px; font-weight: bold; }
+
+/* TEST BUILD / RELEASE BUILD, from the release's pre-release flag or tag */
+.build-kind {
+  flex: none;
+  padding: 0 4px;
+  background: var(--field);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.build-kind[hidden] { display: none; }
+.build-kind[data-kind="release"] { background: #DDEBDD; border-color: #5C8C5C; color: #0B5C0B; }
+.build-kind[data-kind="test"] { background: #F4E8C6; border-color: #A38B45; color: #6B4E00; }
 .build-detail {
   color: var(--muted);
   font-size: 10px;
@@ -232,6 +249,30 @@ code, pre { font-family: var(--mono); }
 }
 
 .play-note { margin: 4px 0 0; color: var(--muted); font-size: 10px; }
+
+/* one card per platform file attached to the release */
+.platforms {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 6px;
+}
+
+.platform {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 8px;
+  background: var(--surface);
+  border: 2px solid;
+  border-color: var(--highlight) var(--shadow) var(--shadow) var(--highlight);
+  text-decoration: none;
+}
+.platform:hover { background: #F7F5EC; color: var(--accent-2); }
+.platform.is-current { background: #E9EEF8; border-color: var(--accent) var(--accent-dark) var(--accent-dark) var(--accent); }
+.platform-name { color: var(--accent-2); font-size: 10px; font-weight: bold; letter-spacing: 0.04em; }
+.platform-meta { color: var(--muted); font-size: 10px; }
+.platform-file { color: #2B2B2B; font-family: var(--mono); font-size: 9.5px; overflow-wrap: anywhere; }
+.platforms-empty { margin: 0; color: var(--muted); font-size: 10.5px; }
 
 /* ---------- buttons ---------- */
 

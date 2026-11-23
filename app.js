@@ -1,18 +1,23 @@
 /*
- * Direct download from the latest published release.
+ * Direct download from the newest published release, for every platform.
  *
- * Buttons carry `data-download`; their label/meta children carry `data-label` and
- * `data-meta`. On load we ask GitHub for the newest release of the builds repo,
- * pick the installer for the visitor's OS, and point every button straight at that
- * asset. Visitors never land on a releases page, and publishing a release updates
- * the site without a rebuild.
+ * A release carries one file per platform (Windows .msi, macOS .dmg for Apple
+ * silicon and Intel, Linux .deb/.rpm, plus the plain jar). We ask GitHub for the
+ * newest release, score its assets against each platform, and point the big
+ * button at the file for this computer. Every other platform gets its own card,
+ * so nobody has to visit the releases page to find their build.
  *
  * /releases/latest ignores pre-releases, so if it has nothing usable we fall back
- * to listing releases and take the newest one that actually has an installer.
+ * to listing releases and take the newest one that actually has a file.
  *
- * The same release carries a checksums.txt (sha256sum layout). Once the installer
- * is picked we read that file and show the matching SHA-256 in the "verify"
- * section, so visitors can check an unsigned build themselves.
+ * The same release says whether it is a test build (pre-release, or a tag like
+ * `Test`, `1.0.0-beta`) or a release build, and ships a checksums.txt (sha256sum
+ * layout). Once a file is picked we read that file and show its SHA-256 in the
+ * "verify" section, so visitors can check an unsigned build themselves.
+ *
+ * The page keeps itself current: release metadata is re-read every few minutes
+ * and whenever the tab comes back, so publishing a release updates the site
+ * without anyone pressing Refresh or reloading.
  */
 (() => {
   // Builds live in their own repository, separate from this site.
@@ -20,11 +25,16 @@
   const API = `https://api.github.com/repos/${RELEASES_REPO}`;
   const RELEASES_URL = `https://github.com/${RELEASES_REPO}/releases/latest`;
   const DOWNLOAD_PAGE = "download.html";
+
   const CACHE_KEY = "mixclient:latest-release";
-  const CACHE_TTL = 10 * 60 * 1000;
+  const CACHE_TTL = 60 * 1000;                 // a page load reuses a minute-old answer
+  const AUTO_REFRESH_MS = 5 * 60 * 1000;       // then the page polls on its own
+  const VISIBILITY_MIN_MS = 60 * 1000;         // returning to the tab refreshes if stale
 
   const buttons = [...document.querySelectorAll("[data-download]")];
   const versionChip = document.getElementById("versionChip");
+  const kindEls = [...document.querySelectorAll("[data-build-kind]")];
+  const platformsEl = document.querySelector("[data-platforms]");
 
   // Release integrity elements (see the "verify" section in index.html).
   const shaHashEl = document.querySelector("[data-sha-hash]");
@@ -42,26 +52,43 @@
   // Attachments that hold the hashes rather than a download.
   const CHECKSUM_FILE = /^(checksums?|sha-?256sums?)(\.txt|\.sha256)?$/i;
 
-  // The release we resolved, so the instructions page can name the exact file.
-  let resolved = null;
-
-  const OS = detectOS();
-  const OS_LABEL = { windows: "Windows", mac: "macOS", linux: "Linux", other: "your system" };
-
-  const KNOWN_EXTENSIONS = [
-    ".exe", ".msi", ".dmg", ".pkg", ".appimage", ".deb", ".rpm", ".tar.gz", ".tgz", ".zip", ".jar",
+  // Files nobody wants as the client download.
+  const IGNORED = [
+    /\.blockmap$/i, /\.sha\d*$/i, /\.sig$/i, /\.json$/i, /\.ya?ml$/i, /\.txt$/i, /\.asc$/i,
   ];
 
-  // The client itself ships as a cross-platform jar, so every OS can take it.
-  const OS_EXTENSIONS = {
-    windows: [".exe", ".msi", ".jar"],
-    mac: [".dmg", ".pkg", ".jar"],
-    linux: [".appimage", ".deb", ".rpm", ".tar.gz", ".tgz", ".jar"],
-    other: [".exe", ".dmg", ".appimage", ".zip", ".jar"],
+  const KNOWN_EXTENSIONS = [
+    ".exe", ".msi", ".dmg", ".pkg", ".appimage", ".deb", ".rpm",
+    ".tar.gz", ".tar.xz", ".tgz", ".zip", ".jar",
+  ];
+
+  const OS_HINTS = {
+    windows: /win(?:dows)?[^a-z]|\.msi$|\.exe$/i,
+    mac: /mac|osx|darwin/i,
+    linux: /linux|ubuntu|debian|fedora|\.deb$|\.rpm$|appimage/i,
   };
 
-  // Attachments nobody wants as the client download.
-  const IGNORED = [/\.blockmap$/i, /\.sha\d*$/i, /\.sig$/i, /\.json$/i, /\.ya?ml$/i, /\.txt$/i];
+  const ARCH_HINTS = {
+    arm: /arm64|aarch64|apple[-_ ]?silicon/i,
+    intel: /x64|x86_64|amd64|intel/i,
+    arm32: /armv7|armhf|arm32/i,
+  };
+
+  // One entry per downloadable build. `os` decides which file a visitor gets by
+  // default; `arch` separates the two macOS disk images.
+  const TARGETS = [
+    { id: "windows", os: "windows", label: "WINDOWS", short: "WINDOWS", ext: [".msi", ".exe"], note: "Windows 10 / 11 installer" },
+    { id: "mac-arm", os: "mac", arch: "arm", label: "MACOS · APPLE SILICON", short: "MACOS", ext: [".dmg", ".pkg"], note: "M-series Macs" },
+    { id: "mac-intel", os: "mac", arch: "intel", label: "MACOS · INTEL", short: "MACOS", ext: [".dmg", ".pkg"], note: "Intel Macs" },
+    { id: "linux", os: "linux", label: "LINUX", short: "LINUX", ext: [".deb", ".rpm", ".appimage", ".tar.gz", ".tar.xz"], note: "DEB, RPM or AppImage" },
+    { id: "jar", os: "any", label: "ANY OS · JAR", short: "ANY OS", ext: [".jar"], note: "Needs Java 17 or newer" },
+  ];
+
+  const state = { release: null, picks: [], primary: null };
+  let lastApplied = 0;
+  let inFlight = null;
+
+  const OS = detectOS();
 
   function detectOS() {
     const nav = typeof navigator !== "undefined" ? navigator : {};
@@ -74,53 +101,110 @@
   }
 
   function assetExtension(name) {
-    const lower = name.toLowerCase();
+    const lower = String(name || "").toLowerCase();
     const multi = [".tar.gz", ".tar.xz"].find((ext) => lower.endsWith(ext));
     return multi || KNOWN_EXTENSIONS.find((ext) => lower.endsWith(ext)) || "";
   }
 
-  function scoreAsset(asset) {
+  function escapeHtml(value) {
+    return String(value == null ? "" : value).replace(/[&<>"']/g, (ch) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    }[ch]));
+  }
+
+  // A release is a test build when GitHub marks it pre-release, or when the tag
+  // or name says so (`Test`, `1.2.0-beta.3`, `rc1`).
+  function buildKind(release) {
+    const label = `${(release && release.tag_name) || ""} ${(release && release.name) || ""}`;
+    const isTest = Boolean(release && release.prerelease) ||
+      /test|beta|alpha|preview|snapshot|nightly|canary|\brc\d*\b/i.test(label);
+    return isTest
+      ? { id: "test", label: "TEST BUILD" }
+      : { id: "release", label: "RELEASE BUILD" };
+  }
+
+  function versionOf(release) {
+    return (release && (release.tag_name || release.name)) || "latest";
+  }
+
+  // Score one attachment against one platform. Files that name a different
+  // platform are dropped; the runnable jar stays as a fallback for everything.
+  function scoreAsset(asset, target) {
     const name = asset.name.toLowerCase();
     const ext = assetExtension(asset.name);
-    let score = 0;
+    if (!ext) return -1;
 
-    if (OS_EXTENSIONS[OS].includes(ext)) score += 10;
-    else if (KNOWN_EXTENSIONS.includes(ext)) score += 1;
+    if (target.os !== "any") {
+      for (const [os, hint] of Object.entries(OS_HINTS)) {
+        if (os !== target.os && hint.test(name)) return -1;
+      }
+      if (target.os !== "windows" && ARCH_HINTS.arm32.test(name)) return -1;
+    }
+
+    let score = 0;
+    if (target.ext.includes(ext)) score += 20;
+    else if (ext === ".jar") score += 4;
     else return -1;
 
-    if (/install|setup/.test(name)) score += 5;
-    // When a build and its dependencies are separate jars, ship the runnable one.
-    if (/-all(?![a-z])|fat|shaded|bundle|standalone/.test(name)) score += 4;
-    if (/win|windows/.test(name) && OS === "windows") score += 2;
-    if (/mac|osx|darwin/.test(name) && OS === "mac") score += 2;
-    if (/linux/.test(name) && OS === "linux") score += 2;
-    if (/source|src|debug|symbols/.test(name)) score -= 5;
+    if (target.arch === "arm") {
+      if (ARCH_HINTS.intel.test(name)) score -= 18;
+      if (ARCH_HINTS.arm.test(name)) score += 6;
+    }
+    if (target.arch === "intel") {
+      if (ARCH_HINTS.arm.test(name)) score -= 18;
+      if (ARCH_HINTS.intel.test(name)) score += 6;
+    }
+
+    if (/install|setup/.test(name)) score += 3;
+    if (/source|src|debug|symbols/.test(name)) score -= 10;
     return score;
   }
 
-  function pickAsset(assets) {
+  function pickAsset(assets, target) {
     const ranked = (assets || [])
       .filter((a) => a && a.name && a.browser_download_url)
       .filter((a) => !IGNORED.some((re) => re.test(a.name)))
-      .map((a) => ({ asset: a, score: scoreAsset(a) }))
-      .filter((c) => c.score >= 0)
+      .map((a) => ({ asset: a, score: scoreAsset(a, target) }))
+      .filter((c) => c.score > 0)
       .sort((a, b) => b.score - a.score);
 
     return ranked.length ? ranked[0].asset : null;
   }
 
-  function newestUsableRelease(list) {
-    for (const release of list || []) {
-      if (!release || release.draft) continue;
-      if (pickAsset(release.assets)) return release;
+  function picksFor(release) {
+    return TARGETS
+      .map((target) => ({ target, asset: pickAsset(release && release.assets, target) }))
+      .filter((entry) => entry.asset);
+  }
+
+  // What the big button hands this visitor.
+  function primaryPick(picks) {
+    const byOs = {
+      windows: ["windows"],
+      mac: ["mac-arm", "mac-intel"],
+      linux: ["linux"],
+      other: [],
+    }[OS] || [];
+
+    for (const id of byOs) {
+      const hit = picks.find((entry) => entry.target.id === id);
+      if (hit) return hit;
     }
-    return null;
+    return picks.find((entry) => entry.target.id === "jar") || picks[0] || null;
   }
 
   function formatSize(bytes) {
     if (!bytes || bytes < 0) return "";
     const mb = bytes / (1024 * 1024);
     return mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb < 10 ? mb.toFixed(1) : Math.round(mb)} MB`;
+  }
+
+  function clock() {
+    try {
+      return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    } catch (err) {
+      return "now";
+    }
   }
 
   function setStatus(text) {
@@ -132,10 +216,69 @@
     if (buildDetailEl) buildDetailEl.textContent = detail;
   }
 
+  function setKind(kind) {
+    kindEls.forEach((el) => {
+      if (!kind) {
+        el.hidden = true;
+        el.removeAttribute("data-kind");
+        return;
+      }
+      el.hidden = false;
+      el.textContent = kind.label;
+      el.dataset.kind = kind.id;
+    });
+  }
+
+  function renderPlatforms(picks, currentId) {
+    if (!platformsEl) return;
+    platformsEl.textContent = "";
+
+    if (!picks.length) {
+      const empty = document.createElement("p");
+      empty.className = "platforms-empty";
+      empty.textContent = "This release has no files attached yet.";
+      platformsEl.appendChild(empty);
+      return;
+    }
+
+    picks.forEach(({ target, asset }) => {
+      const card = document.createElement("a");
+      card.className = "platform" + (target.id === currentId ? " is-current" : "");
+      card.href = asset.browser_download_url;
+      card.dataset.asset = asset.browser_download_url;
+      card.dataset.target = target.id;
+      card.title = `${asset.name} · ${target.note}`;
+      card.innerHTML =
+        `<span class="platform-name">${escapeHtml(target.label)}</span>` +
+        `<span class="platform-meta">${escapeHtml(target.note)}</span>` +
+        `<span class="platform-file">${escapeHtml(asset.name)}` +
+        `${asset.size ? ` · ${escapeHtml(formatSize(asset.size))}` : ""}</span>`;
+      platformsEl.appendChild(card);
+    });
+  }
+
   function findChecksumAsset(assets) {
     return (assets || []).find(
       (a) => a && a.name && a.browser_download_url && CHECKSUM_FILE.test(a.name),
     ) || null;
+  }
+
+  // GitHub reports the upload's hash on the asset itself. Reading it needs no
+  // second request, and release downloads don't send CORS headers, so this is
+  // the only way the page can see the value.
+  function digestOf(asset) {
+    const digest = asset && asset.digest;
+    if (typeof digest !== "string") return null;
+    const match = digest.trim().match(/^sha256:([a-f0-9]{64})$/i);
+    return match ? match[1].toLowerCase() : null;
+  }
+
+  function showHash(hash) {
+    if (!shaHashEl) return;
+    delete shaHashEl.dataset.state;
+    shaHashEl.textContent = hash;
+    shaHashEl.dataset.hash = hash;
+    if (shaCopyEl) shaCopyEl.hidden = false;
   }
 
   // checksums.txt is written by `sha256sum <file>`: "<64 hex chars>  <filename>".
@@ -170,6 +313,12 @@
     if (shaFileEl) shaFileEl.textContent = asset.name;
     shaNameEls.forEach((el) => { el.textContent = asset.name; });
 
+    const known = digestOf(asset);
+    if (known) {
+      showHash(known);
+      return;
+    }
+
     if (!checksums) {
       setChecksumMissing("This release has no checksums.txt yet.");
       return;
@@ -180,21 +329,18 @@
       if (!res.ok) throw new Error(`checksums.txt: HTTP ${res.status}`);
 
       const hash = parseChecksum(await res.text(), asset.name);
-      if (!hash) throw new Error("installer missing from checksums.txt");
+      if (!hash) throw new Error("file missing from checksums.txt");
 
-      delete shaHashEl.dataset.state;
-      shaHashEl.textContent = hash;
-      shaHashEl.dataset.hash = hash;
-      if (shaCopyEl) shaCopyEl.hidden = false;
+      showHash(hash);
     } catch (err) {
-      setChecksumMissing("Couldn't read checksums.txt — open it on the release page.");
+      setChecksumMissing("GitHub didn't publish this file's hash — open checksums.txt on the release page.");
     }
   }
 
-  function setButtons(url, { state, label, meta } = {}) {
+  function setButtons(url, { state: buttonState, label, meta } = {}) {
     buttons.forEach((el) => {
       el.href = url;
-      if (state) el.dataset.state = state;
+      if (buttonState) el.dataset.state = buttonState;
       else el.removeAttribute("data-state");
 
       const labelEl = el.querySelector("[data-label]");
@@ -202,46 +348,104 @@
       if (labelEl && label) labelEl.textContent = label;
       if (metaEl && meta) metaEl.textContent = meta;
       if (!metaEl && meta) el.title = meta;
-      if (url) el.dataset.asset = state === "empty" ? "" : url;
+      el.dataset.asset = buttonState === "empty" ? "" : (url || "");
     });
   }
 
-  function applyRelease(release) {
-    const asset = pickAsset(release.assets);
-    const version = release.tag_name || release.name || "latest";
+  function buttonLabel(target) {
+    if (!target) return "DOWNLOAD";
+    if (target.id === "jar") return "DOWNLOAD THE JAR";
+    return `DOWNLOAD FOR ${target.short || target.label}`;
+  }
 
-    if (!asset) {
+  function applyRelease(release) {
+    state.release = release;
+    lastApplied = Date.now();
+
+    const version = versionOf(release);
+    const kind = buildKind(release);
+    const picks = picksFor(release);
+    state.picks = picks;
+    setKind(kind);
+
+    if (!picks.length) {
+      state.primary = null;
       setButtons(DOWNLOAD_PAGE, {
         state: "empty",
-        label: "NO BUILDS YET",
-        meta: `Release ${version} has no installer yet`,
+        label: "NO FILES YET",
+        meta: `Release ${version} has no files attached yet`,
       });
-      resolved = null;
-      setBuild(`MixClient ${version}`, "This release has no jar attached yet.");
+      setBuild(`MixClient ${version}`, "This release has no files attached yet.");
       setStatus(`Release ${version} has no download yet.`);
+      renderPlatforms([], null);
       loadChecksum(release, null);
       return;
     }
 
-    const platform = OS_LABEL[OS] === "your system" ? "CLIENT" : OS_LABEL[OS].toUpperCase();
+    const primary = primaryPick(picks);
+    state.primary = primary;
+
+    const { target, asset } = primary;
     const meta = [version, formatSize(asset.size), asset.name].filter(Boolean).join(" · ");
-    setBuild(`MixClient ${version}`, `${asset.name} · ${formatSize(asset.size)} · unsigned`);
-    setStatus(`Ready · ${asset.name}`);
-    // A jar runs on every OS, so naming a platform on its button would mislead.
-    const isJar = assetExtension(asset.name) === ".jar";
-    resolved = { asset, version };
+    const size = formatSize(asset.size);
+
+    setBuild(
+      `MixClient ${version}`,
+      `${asset.name}${size ? ` · ${size}` : ""} · unsigned`,
+    );
+    setStatus(`Ready · ${target.short || target.label} build · checked ${clock()}`);
+
     setButtons(asset.browser_download_url, {
-      label: isJar ? "DOWNLOAD JAR" : `DOWNLOAD FOR ${platform}`,
+      label: buttonLabel(target),
       meta,
     });
+
+    renderPlatforms(picks, target.id);
 
     if (versionChip) {
       versionChip.hidden = false;
       versionChip.textContent = version;
-      versionChip.title = `Latest release: ${version}`;
+      versionChip.title = `Latest release: ${version} (${kind.label.toLowerCase()})`;
     }
 
     loadChecksum(release, asset);
+  }
+
+  function applyEmpty() {
+    state.release = null;
+    state.picks = [];
+    state.primary = null;
+    setKind(null);
+    setButtons(DOWNLOAD_PAGE, {
+      state: "empty",
+      label: "NO BUILDS YET",
+      meta: "The first release appears here automatically",
+    });
+    setBuild("No build published yet", "The first release appears here automatically.");
+    setStatus("No release published yet — this page checks again on its own.");
+    renderPlatforms([], null);
+  }
+
+  function applyFailure() {
+    state.picks = [];
+    state.primary = null;
+    setKind(null);
+    setButtons(DOWNLOAD_PAGE, {
+      state: "empty",
+      label: "OPEN LATEST RELEASE",
+      meta: "Couldn't reach GitHub — trying again shortly",
+    });
+    setBuild("Couldn't reach GitHub", "The page retries by itself; Refresh checks right now.");
+    setStatus("Couldn't reach GitHub — retrying automatically.");
+    renderPlatforms([], null);
+  }
+
+  function newestUsableRelease(list) {
+    for (const release of list || []) {
+      if (!release || release.draft) continue;
+      if (picksFor(release).length) return release;
+    }
+    return null;
   }
 
   function readCache() {
@@ -280,40 +484,38 @@
     return latest.status === 404 ? null : undefined;
   }
 
-  async function load() {
-    const cached = readCache();
-    if (cached) {
-      applyRelease(cached);
-      return;
-    }
+  async function load({ force = false, silent = false } = {}) {
+    if (inFlight) return inFlight;
 
-    try {
-      const release = await resolveRelease();
-
-      if (release === null) {
-        setButtons(DOWNLOAD_PAGE, {
-          state: "empty",
-          label: "NO BUILDS YET",
-          meta: "The first release appears here automatically",
-        });
-        resolved = null;
-        setBuild("No build published yet", "The first release appears here automatically.");
-        setStatus("No release published yet.");
+    if (!force) {
+      const cached = readCache();
+      if (cached) {
+        applyRelease(cached);
         return;
       }
-      if (release === undefined) throw new Error("GitHub API unavailable");
+    }
 
-      writeCache(release);
-      applyRelease(release);
-    } catch (err) {
-      setButtons(DOWNLOAD_PAGE, {
-        state: "empty",
-        label: "OPEN LATEST RELEASE",
-        meta: "Couldn't reach GitHub — try again in a moment",
-      });
-      resolved = null;
-      setBuild("Couldn't reach GitHub", "Press Refresh, or open the release page.");
-      setStatus("Couldn't reach GitHub — press Refresh.");
+    if (!silent) setStatus("Checking the latest release…");
+
+    inFlight = (async () => {
+      try {
+        const release = await resolveRelease();
+        if (release === null) {
+          applyEmpty();
+          return;
+        }
+        if (release === undefined) throw new Error("GitHub API unavailable");
+        writeCache(release);
+        applyRelease(release);
+      } catch (err) {
+        applyFailure();
+      }
+    })();
+
+    try {
+      await inFlight;
+    } finally {
+      inFlight = null;
     }
   }
 
@@ -326,10 +528,21 @@
         /* storage disabled — nothing cached anyway */
       }
       refreshBtn.disabled = true;
-      setStatus("Checking the latest release…");
-      load().finally(() => { refreshBtn.disabled = false; });
+      load({ force: true }).finally(() => { refreshBtn.disabled = false; });
     });
   }
+
+  // Auto-update: no reload, no clicking. A new release changes the labels and
+  // links in place within a few minutes.
+  setInterval(() => { load({ force: true, silent: true }); }, AUTO_REFRESH_MS);
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) return;
+    if (Date.now() - lastApplied < VISIBILITY_MIN_MS) return;
+    load({ force: true, silent: true });
+  });
+
+  window.addEventListener("online", () => { load({ force: true, silent: true }); });
 
   if (shaCopyEl && shaHashEl) {
     shaCopyEl.addEventListener("click", async () => {
@@ -345,14 +558,29 @@
     });
   }
 
-  // Where the instructions page lives, carrying the file we resolved.
-  function instructionsUrl() {
+  // Where the instructions page lives, carrying the file that was clicked and
+  // every file in the release so other platforms can be picked there too.
+  function instructionsUrl(pick) {
     const params = new URLSearchParams();
-    if (resolved) {
-      params.set("file", resolved.asset.name);
-      if (resolved.asset.size) params.set("size", String(resolved.asset.size));
-      if (resolved.version) params.set("version", resolved.version);
+
+    if (state.release) {
+      params.set("version", versionOf(state.release));
+      params.set("kind", buildKind(state.release).id);
+      if (state.release.tag_name) params.set("tag", state.release.tag_name);
     }
+
+    if (pick) {
+      params.set("platform", pick.target.id);
+      params.set("file", pick.asset.name);
+      if (pick.asset.size) params.set("size", String(pick.asset.size));
+    }
+
+    if (state.picks.length) {
+      params.set("files", state.picks
+        .map(({ target, asset }) => `${target.id}:${asset.size || 0}:${asset.name}`)
+        .join("|"));
+    }
+
     const query = params.toString();
     return query ? `${DOWNLOAD_PAGE}?${query}` : DOWNLOAD_PAGE;
   }
@@ -370,21 +598,33 @@
   }
 
   // Download first, then land on the instructions page instead of GitHub.
+  function beginDownload(pick, url) {
+    if (!url) {
+      window.location.href = instructionsUrl(pick);
+      return;
+    }
+
+    startDownload(url);
+    // A short beat so the browser has begun the transfer before we leave.
+    setTimeout(() => { window.location.href = instructionsUrl(pick); }, 400);
+  }
+
   buttons.forEach((el) => {
     el.addEventListener("click", (event) => {
       event.preventDefault();
-      const url = el.dataset.asset;
-
-      if (!url) {
-        window.location.href = instructionsUrl();
-        return;
-      }
-
-      startDownload(url);
-      // A short beat so the browser has begun the transfer before we leave.
-      setTimeout(() => { window.location.href = instructionsUrl(); }, 400);
+      beginDownload(state.primary, el.dataset.asset || el.href);
     });
   });
+
+  if (platformsEl) {
+    platformsEl.addEventListener("click", (event) => {
+      const card = event.target.closest("[data-target]");
+      if (!card) return;
+      event.preventDefault();
+      const pick = state.picks.find((entry) => entry.target.id === card.dataset.target) || state.primary;
+      beginDownload(pick, card.dataset.asset || card.href);
+    });
+  }
 
   load();
 })();

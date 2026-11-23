@@ -65,8 +65,11 @@
         <div class="build-card">
           <span class="logo logo--sm" aria-hidden="true">M</span>
           <div class="build-info">
-            <span class="build-name" data-build-name>Checking GitHub…</span>
-            <span class="build-detail" data-build-detail>Unsigned jar · SHA-256 published with every release</span>
+            <span class="build-head">
+              <span class="build-name" data-build-name>Checking GitHub…</span>
+              <span class="build-kind" data-build-kind hidden>RELEASE BUILD</span>
+            </span>
+            <span class="build-detail" data-build-detail>Installers for Windows, macOS and Linux · SHA-256 in every release</span>
           </div>
           <a class="btn" href="https://github.com/Mix-Studios/client-mix/releases" target="_blank" rel="noopener">Releases</a>
         </div>
@@ -79,12 +82,15 @@
 
         <a class="btn btn-primary btn-play" data-download
            href="https://github.com/Mix-Studios/client-mix/releases/latest" rel="noopener">
-          <span data-label>DOWNLOAD JAR</span>
+          <span data-label>DOWNLOAD</span>
         </a>
         <p class="status-line" data-status>Checking the latest release…</p>
 
+        <p class="group-label">ALL PLATFORMS</p>
+        <div class="platforms" data-platforms></div>
+
         <p class="play-note">
-          Free and open source. The jar runs on Windows, macOS and Linux.
+          Free and open source. Pick another platform above if this computer isn't the one you play on.
         </p>
       </section>
 
@@ -152,8 +158,8 @@
           </div>
           <div class="step">
             <span class="step-num">02</span>
-            <h3>RUN THE SETUP</h3>
-            <p>Pick a folder and let it finish. Builds are unsigned, so Windows asks for “More info → Run anyway”.</p>
+            <h3>RUN THE INSTALLER</h3>
+            <p>Windows asks for “More info → Run anyway”; macOS needs a right-click → Open the first time; Linux installs with your package tool.</p>
           </div>
           <div class="step">
             <span class="step-num">03</span>
@@ -209,16 +215,20 @@
             <p>Yes. It is free and open source, and there is nothing to buy inside the client.</p>
           </details>
           <details>
+            <summary>What is a test build?</summary>
+            <p>Releases tagged as pre-releases (or named like <code class="inline-code">Test</code> / <code class="inline-code">1.2.0-beta</code>) are labelled <strong>TEST BUILD</strong> on this page. They are newer and less tested; the badge switches to <strong>RELEASE BUILD</strong> for a normal release.</p>
+          </details>
+          <details>
             <summary>Which Minecraft versions work?</summary>
             <p>Modern releases plus 1.8.9 for PvP. Switch versions from the launcher; each keeps its own mods and settings.</p>
           </details>
           <details>
             <summary>Where do the downloads come from?</summary>
-            <p>The download button asks GitHub for the newest published release and links straight to that file. Nothing is re-hosted. Every release also publishes a <code class="inline-code">checksums.txt</code>, and the build carries a GitHub build provenance attestation — see <a href="#verify">Verify your download</a>.</p>
+            <p>The page asks GitHub for the newest published release, picks the file for this computer and links straight to it. Windows, macOS (Apple silicon and Intel) and Linux each get their own file; nothing is re-hosted. Every release also publishes a <code class="inline-code">checksums.txt</code>, and the build carries a GitHub build provenance attestation — see <a href="#verify">Verify your download</a>.</p>
           </details>
           <details>
             <summary>Do I need Java installed?</summary>
-            <p>No. The client ships with its own runtime and picks the right one per version.</p>
+            <p>Not for the installers — they bundle their own runtime. Only the plain jar needs Java 17 or newer.</p>
           </details>
           <details>
             <summary>Why does the installer warn me?</summary>
@@ -232,7 +242,7 @@
         <p>Free, open source, and one click from the latest build.</p>
         <a class="btn btn-primary btn-primary--wide" data-download
            href="https://github.com/Mix-Studios/client-mix/releases/latest" rel="noopener">
-          <span data-label>DOWNLOAD JAR</span>
+          <span data-label>DOWNLOAD</span>
         </a>
       </section>
 
