@@ -32,6 +32,12 @@
   const shaLinkEl = document.querySelector("[data-sha-link]");
   const shaNameEls = [...document.querySelectorAll("[data-sha-name]")];
 
+  // Launcher chrome: the build card and the status line under the play button.
+  const statusEl = document.querySelector("[data-status]");
+  const buildNameEl = document.querySelector("[data-build-name]");
+  const buildDetailEl = document.querySelector("[data-build-detail]");
+  const refreshBtn = document.querySelector("[data-refresh]");
+
   // Attachments that hold the hashes rather than a download.
   const CHECKSUM_FILE = /^(checksums?|sha-?256sums?)(\.txt|\.sha256)?$/i;
 
@@ -111,6 +117,15 @@
     if (!bytes || bytes < 0) return "";
     const mb = bytes / (1024 * 1024);
     return mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb < 10 ? mb.toFixed(1) : Math.round(mb)} MB`;
+  }
+
+  function setStatus(text) {
+    if (statusEl) statusEl.textContent = text;
+  }
+
+  function setBuild(name, detail) {
+    if (buildNameEl) buildNameEl.textContent = name;
+    if (buildDetailEl) buildDetailEl.textContent = detail;
   }
 
   function findChecksumAsset(assets) {
@@ -197,12 +212,16 @@
         label: "NO BUILDS YET",
         meta: `Release ${version} has no installer yet`,
       });
+      setBuild(`MixClient ${version}`, "This release has no jar attached yet.");
+      setStatus(`Release ${version} has no download yet.`);
       loadChecksum(release, null);
       return;
     }
 
     const platform = OS_LABEL[OS] === "your system" ? "CLIENT" : OS_LABEL[OS].toUpperCase();
     const meta = [version, formatSize(asset.size), asset.name].filter(Boolean).join(" · ");
+    setBuild(`MixClient ${version}`, `${asset.name} · ${formatSize(asset.size)} · unsigned`);
+    setStatus(`Ready · ${asset.name}`);
     // A jar runs on every OS, so naming a platform on its button would mislead.
     const isJar = assetExtension(asset.name) === ".jar";
     setButtons(asset.browser_download_url, {
@@ -271,6 +290,8 @@
           label: "NO BUILDS YET",
           meta: "The first release appears here automatically",
         });
+        setBuild("No build published yet", "The first release appears here automatically.");
+        setStatus("No release published yet.");
         return;
       }
       if (release === undefined) throw new Error("GitHub API unavailable");
@@ -283,7 +304,23 @@
         label: "OPEN LATEST RELEASE",
         meta: "Couldn't reach GitHub — try again in a moment",
       });
+      setBuild("Couldn't reach GitHub", "Press Refresh, or open the release page.");
+      setStatus("Couldn't reach GitHub — press Refresh.");
     }
+  }
+
+  // Launcher-style Refresh: drop the cached release and ask GitHub again.
+  if (refreshBtn) {
+    refreshBtn.addEventListener("click", () => {
+      try {
+        sessionStorage.removeItem(CACHE_KEY);
+      } catch (err) {
+        /* storage disabled — nothing cached anyway */
+      }
+      refreshBtn.disabled = true;
+      setStatus("Checking the latest release…");
+      load().finally(() => { refreshBtn.disabled = false; });
+    });
   }
 
   if (shaCopyEl && shaHashEl) {

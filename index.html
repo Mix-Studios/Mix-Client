@@ -5,248 +5,244 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mix Client — open-source Minecraft client</title>
 <meta name="description" content="Mix Client is a fast, open-source Minecraft client for every modern version. One installer for Windows, macOS and Linux, with boosted frames and built-in mods.">
-<meta name="theme-color" content="#000000">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23000'/%3E%3Crect x='7' y='7' width='8' height='8' fill='%2357e08a'/%3E%3Crect x='17' y='7' width='8' height='8' fill='%232f9d5f'/%3E%3Crect x='7' y='17' width='8' height='8' fill='%232f9d5f'/%3E%3Crect x='17' y='17' width='8' height='8' fill='%23b8f55f'/%3E%3C/svg%3E">
+<meta name="theme-color" content="#0A246A">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23316AC5'/%3E%3Cstop offset='1' stop-color='%230A246A'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' fill='%23ECE9D8'/%3E%3Crect x='2' y='2' width='28' height='28' fill='url(%23g)'/%3E%3Ctext x='16' y='23' font-family='Tahoma,Verdana,sans-serif' font-size='18' font-weight='bold' fill='%23fff' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://api.github.com">
 <link rel="preconnect" href="https://objects.githubusercontent.com">
-<link rel="preload" as="image" href="assets/hero-night.webp" type="image/webp" fetchpriority="high">
 <link rel="stylesheet" href="styles.css">
 <script defer src="app.js"></script>
 </head>
 <body>
 
-<!-- Top bar: wordmark, version badge, uppercase nav, solid download block -->
-<header class="topbar">
-  <div class="topbar-inner">
-    <a class="brand" href="#top">
-      <!-- Placeholder logo: CSS squares. Swap for <img src="assets/logo.svg" alt="Mix Client"> when the mark exists. -->
-      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-      <span class="brand-name">MIX CLIENT</span>
-    </a>
+<div class="app" id="top">
 
-    <span class="version" id="versionChip" hidden></span>
-
-    <nav class="topnav" aria-label="Main">
-      <a href="#features">Features</a>
-      <a href="#install">Install</a>
-      <a href="#verify">Verify</a>
-      <a href="#faq">FAQ</a>
-      <a href="https://github.com/Mix-Studios" target="_blank" rel="noopener">GitHub</a>
-    </nav>
-
-    <a class="nav-download" data-download
-       href="https://github.com/Mix-Studios/client-mix/releases/latest"
-       rel="noopener">Download</a>
+  <!-- Blue title strip, as in the launcher window -->
+  <div class="titlebar">
+    <span class="titlebar-title">MixClient 1.0.0</span>
+    <span class="titlebar-hint">PvP launcher</span>
   </div>
-</header>
 
-<main id="top">
+  <div class="body">
 
-  <!-- Hero: full-bleed key art, centered wordmark and download -->
-  <section class="hero">
-    <picture class="hero-bg">
-      <source srcset="assets/hero-night.webp" type="image/webp">
-      <img src="assets/hero-night.jpg" alt="" width="1392" height="752"
-           fetchpriority="high" decoding="async">
-    </picture>
+    <!-- 2007-style sidebar navigation -->
+    <aside class="sidebar">
+      <a class="brand" href="#play">
+        <span class="logo" aria-hidden="true">M</span>
+        <span class="brand-name">MixClient</span>
+      </a>
 
-    <div class="hero-inner">
-      <span class="hero-logo" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-      <h1>MIX CLIENT</h1>
-      <p class="hero-tag">A fast, open-source Minecraft client for every modern version.</p>
+      <nav class="nav" aria-label="Main">
+        <a class="nav-item is-active" href="#play">Play</a>
+        <a class="nav-item" href="#features">Features</a>
+        <a class="nav-item" href="#install">Install</a>
+        <a class="nav-item" href="#verify">Verify</a>
+        <a class="nav-item" href="#faq">FAQ</a>
+        <a class="nav-item" href="https://github.com/Mix-Studios/Mix-Client" target="_blank" rel="noopener">Source</a>
+        <a class="nav-item" href="https://github.com/Mix-Studios/client-mix/releases" target="_blank" rel="noopener">Releases</a>
+        <a class="nav-item" href="https://github.com/Mix-Studios/Mix-Client/issues" target="_blank" rel="noopener">Report a bug</a>
+      </nav>
 
-      <div class="hero-actions">
-        <a class="btn btn-primary" data-download
-           href="https://github.com/Mix-Studios/client-mix/releases/latest" rel="noopener">
-          <svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg>
-          <span class="btn-copy">
-            <strong data-label>DOWNLOAD</strong>
-            <small data-meta>Finding the latest build…</small>
-          </span>
-        </a>
-        <a class="btn btn-ghost" href="https://github.com/Mix-Studios" target="_blank" rel="noopener">
-          <svg class="ico" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.55v-1.94c-3.2.7-3.88-1.54-3.88-1.54-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.19 1.77 1.19 1.04 1.78 2.72 1.27 3.38.97.1-.75.4-1.27.73-1.56-2.56-.29-5.25-1.28-5.25-5.71 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.47.11-3.06 0 0 .97-.31 3.18 1.19a11 11 0 0 1 5.79 0c2.2-1.5 3.17-1.19 3.17-1.19.63 1.59.23 2.77.12 3.06.74.81 1.19 1.84 1.19 3.1 0 4.44-2.7 5.42-5.27 5.7.41.36.78 1.07.78 2.16v3.2c0 .31.21.66.8.55A11.5 11.5 0 0 0 23.5 12A11.5 11.5 0 0 0 12 .5Z"/></svg>
-          SOURCE
-        </a>
+      <div class="sidebar-foot">
+        <span>Microsoft sign-in inside the client</span>
+        <span>v1.0.0</span>
       </div>
+    </aside>
 
-      <p class="hero-note">
-        Latest installer, straight from the release — no redirects.
-        <span class="sep" aria-hidden="true">·</span> Windows, macOS, Linux
-      </p>
-    </div>
-  </section>
+    <main class="content">
 
-  <!-- Four headline claims, like the usual client-site tile row -->
-  <section class="tiles" aria-label="Highlights">
-    <a class="tile" href="#features">
-      <span class="tile-ico" aria-hidden="true">⛏</span>
-      <strong>SINGLE INSTALL</strong>
-      <small>One setup file, every version</small>
-    </a>
-    <a class="tile" href="#features">
-      <span class="tile-ico" aria-hidden="true">🧩</span>
-      <strong>COUNTLESS MODS</strong>
-      <small>Fabric mods out of the box</small>
-    </a>
-    <a class="tile" href="#features">
-      <span class="tile-ico" aria-hidden="true">⚡</span>
-      <strong>BOOSTED FRAMES</strong>
-      <small>Optimisations enabled by default</small>
-    </a>
-    <a class="tile" href="#features">
-      <span class="tile-ico" aria-hidden="true">🖥</span>
-      <strong>MULTI-OS</strong>
-      <small>Windows, macOS and Linux</small>
-    </a>
-  </section>
-
-  <section class="section" id="features">
-    <h2 class="section-title">Built for people who play</h2>
-    <p class="section-sub">No launcher bloat, no background services. Just a client that gets out of the way.</p>
-
-    <div class="grid-3">
-      <article class="card">
-        <h3>FRAME-RATE FIRST</h3>
-        <p>Rendering and entity optimisations are on from the first launch, so older laptops and high-refresh monitors both gain frames.</p>
-      </article>
-      <article class="card">
-        <h3>YOUR HUD, YOUR RULES</h3>
-        <p>Drag keystrokes, CPS, ping, armour and potions anywhere on screen, then save separate layouts per profile.</p>
-      </article>
-      <article class="card">
-        <h3>MODS THAT JUST WORK</h3>
-        <p>Drop Fabric mods into the client folder or install them from inside the launcher. Conflicts are flagged before launch.</p>
-      </article>
-    </div>
-
-    <div class="grid-3 grid-3--tight">
-      <article class="card card--quiet">
-        <h3>LIGHT ON RAM</h3>
-        <p>Tuned defaults keep memory use low, so streaming or a second monitor doesn't cost you frames.</p>
-      </article>
-      <article class="card card--quiet">
-        <h3>INSTANT VERSION SWITCH</h3>
-        <p>Jump between 1.8.9 for PvP and the newest release without separate installs or duplicated worlds.</p>
-      </article>
-      <article class="card card--quiet">
-        <h3>OPEN SOURCE</h3>
-        <p>Every line is on GitHub. Read it, build it yourself, or open an issue when something breaks.</p>
-      </article>
-    </div>
-  </section>
-
-  <section class="section section--dark" id="install">
-    <h2 class="section-title">Install in a minute</h2>
-    <div class="steps">
-      <div class="step">
-        <span class="step-num">01</span>
-        <h3>DOWNLOAD</h3>
-        <p>Press download. The button resolves the newest release and starts the installer directly.</p>
-      </div>
-      <div class="step">
-        <span class="step-num">02</span>
-        <h3>RUN THE SETUP</h3>
-        <p>Pick a folder and let it finish. Builds are unsigned, so Windows asks for “More info → Run anyway”.</p>
-      </div>
-      <div class="step">
-        <span class="step-num">03</span>
-        <h3>SIGN IN AND PLAY</h3>
-        <p>Use your Microsoft account, choose a version and launch. Your existing worlds are already there.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- Release integrity: SHA-256 from checksums.txt plus GitHub build provenance -->
-  <section class="section" id="verify">
-    <h2 class="section-title">Verify your download</h2>
-    <p class="section-sub">
-      Builds are unsigned, so every release publishes a <code class="inline-code">checksums.txt</code> and a
-      GitHub build provenance attestation. Compare the hash below with the file you downloaded before you run it.
-    </p>
-
-    <div class="verify">
-      <div class="verify-card">
-        <span class="verify-label">
-          SHA-256<span class="verify-sep" aria-hidden="true">·</span><span data-sha-file>latest installer</span>
-        </span>
-        <div class="verify-hash-row">
-          <code class="verify-hash" data-sha-hash aria-live="polite">Reading checksums.txt from the latest release…</code>
-          <button class="verify-copy" type="button" data-sha-copy hidden>COPY</button>
+      <!-- Play screen: wordmark, latest build, version, big download button -->
+      <section class="play" id="play">
+        <div class="play-head">
+          <span class="logo logo--lg" aria-hidden="true">M</span>
+          <div>
+            <h1 class="play-title">MIXCLIENT</h1>
+            <p class="play-sub">PvP launcher for Minecraft: Java Edition</p>
+          </div>
         </div>
-        <a class="verify-link" data-sha-link
-           href="https://github.com/Mix-Studios/client-mix/releases/latest" target="_blank" rel="noopener">
-          checksums.txt and attestations on GitHub →
+
+        <p class="group-label">LATEST BUILD</p>
+        <div class="build-card">
+          <span class="logo logo--sm" aria-hidden="true">M</span>
+          <div class="build-info">
+            <span class="build-name" data-build-name>Checking GitHub…</span>
+            <span class="build-detail" data-build-detail>Unsigned jar · SHA-256 published with every release</span>
+          </div>
+          <a class="btn" href="https://github.com/Mix-Studios/client-mix/releases" target="_blank" rel="noopener">Releases</a>
+        </div>
+
+        <p class="group-label">VERSION</p>
+        <div class="version-row">
+          <span class="field combo" id="versionChip" hidden></span>
+          <button class="btn" type="button" data-refresh>Refresh</button>
+        </div>
+
+        <a class="btn btn-primary btn-play" data-download
+           href="https://github.com/Mix-Studios/client-mix/releases/latest" rel="noopener">
+          <span data-label>DOWNLOAD JAR</span>
         </a>
+        <p class="status-line" data-status>Checking the latest release…</p>
+
+        <p class="play-note">
+          Free and open source. The jar runs on Windows, macOS and Linux.
+        </p>
+      </section>
+
+      <!-- Four headline claims, like the usual client-site tile row -->
+      <section class="highlights" aria-label="Highlights">
+        <a class="highlight" href="#features">
+          <strong>SINGLE INSTALL</strong>
+          <small>One file, every version</small>
+        </a>
+        <a class="highlight" href="#features">
+          <strong>COUNTLESS MODS</strong>
+          <small>Fabric mods out of the box</small>
+        </a>
+        <a class="highlight" href="#features">
+          <strong>BOOSTED FRAMES</strong>
+          <small>Optimisations on by default</small>
+        </a>
+        <a class="highlight" href="#features">
+          <strong>MULTI-OS</strong>
+          <small>Windows, macOS and Linux</small>
+        </a>
+      </section>
+
+      <section class="section" id="features">
+        <p class="group-label">FEATURES</p>
+        <h2 class="section-title">Built for people who play</h2>
+        <p class="section-sub">No launcher bloat, no background services. Just a client that gets out of the way.</p>
+
+        <div class="grid-3">
+          <article class="card">
+            <h3>FRAME-RATE FIRST</h3>
+            <p>Rendering and entity optimisations are on from the first launch, so older laptops and high-refresh monitors both gain frames.</p>
+          </article>
+          <article class="card">
+            <h3>YOUR HUD, YOUR RULES</h3>
+            <p>Drag keystrokes, CPS, ping, armour and potions anywhere on screen, then save separate layouts per profile.</p>
+          </article>
+          <article class="card">
+            <h3>MODS THAT JUST WORK</h3>
+            <p>Drop Fabric mods into the client folder or install them from inside the launcher. Conflicts are flagged before launch.</p>
+          </article>
+          <article class="card">
+            <h3>LIGHT ON RAM</h3>
+            <p>Tuned defaults keep memory use low, so streaming or a second monitor doesn't cost you frames.</p>
+          </article>
+          <article class="card">
+            <h3>INSTANT VERSION SWITCH</h3>
+            <p>Jump between 1.8.9 for PvP and the newest release without separate installs or duplicated worlds.</p>
+          </article>
+          <article class="card">
+            <h3>OPEN SOURCE</h3>
+            <p>Every line is on GitHub. Read it, build it yourself, or open an issue when something breaks.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="install">
+        <p class="group-label">INSTALL</p>
+        <h2 class="section-title">Install in a minute</h2>
+        <div class="steps">
+          <div class="step">
+            <span class="step-num">01</span>
+            <h3>DOWNLOAD</h3>
+            <p>Press download. The button resolves the newest release and starts the download directly.</p>
+          </div>
+          <div class="step">
+            <span class="step-num">02</span>
+            <h3>RUN THE SETUP</h3>
+            <p>Pick a folder and let it finish. Builds are unsigned, so Windows asks for “More info → Run anyway”.</p>
+          </div>
+          <div class="step">
+            <span class="step-num">03</span>
+            <h3>SIGN IN AND PLAY</h3>
+            <p>Use your Microsoft account, choose a version and launch. Your existing worlds are already there.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Release integrity: SHA-256 from checksums.txt plus GitHub build provenance -->
+      <section class="section" id="verify">
+        <p class="group-label">VERIFY</p>
+        <h2 class="section-title">Verify your download</h2>
+        <p class="section-sub">
+          Builds are unsigned, so every release publishes a <code class="inline-code">checksums.txt</code> and a
+          GitHub build provenance attestation. Compare the hash below with the file you downloaded before you run it.
+        </p>
+
+        <div class="verify">
+          <div class="verify-card">
+            <span class="verify-label">
+              SHA-256<span class="verify-sep" aria-hidden="true">·</span><span data-sha-file>latest installer</span>
+            </span>
+            <div class="verify-hash-row">
+              <code class="verify-hash" data-sha-hash aria-live="polite">Reading checksums.txt from the latest release…</code>
+              <button class="btn verify-copy" type="button" data-sha-copy hidden>COPY</button>
+            </div>
+            <a class="verify-link" data-sha-link
+               href="https://github.com/Mix-Studios/client-mix/releases/latest" target="_blank" rel="noopener">
+              checksums.txt and attestations on GitHub →
+            </a>
+          </div>
+
+          <div class="verify-cmds">
+            <h3>CHECK IT YOURSELF</h3>
+            <p>The output has to match the hash above, character for character.</p>
+            <p class="verify-os">Windows</p>
+            <pre><code>certutil -hashfile <span data-sha-name>MixClient-*.jar</span> SHA256</code></pre>
+            <p class="verify-os">macOS / Linux</p>
+            <pre><code>shasum -a 256 <span data-sha-name>MixClient-*.jar</span></code></pre>
+            <p class="verify-os">Provenance, with the GitHub CLI</p>
+            <pre><code>gh attestation verify <span data-sha-name>MixClient-*.jar</span> --repo Mix-Studios/client-mix</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="faq">
+        <p class="group-label">FAQ</p>
+        <h2 class="section-title">Questions</h2>
+        <div class="faq">
+          <details>
+            <summary>Is Mix Client free?</summary>
+            <p>Yes. It is free and open source, and there is nothing to buy inside the client.</p>
+          </details>
+          <details>
+            <summary>Which Minecraft versions work?</summary>
+            <p>Modern releases plus 1.8.9 for PvP. Switch versions from the launcher; each keeps its own mods and settings.</p>
+          </details>
+          <details>
+            <summary>Where do the downloads come from?</summary>
+            <p>The download button asks GitHub for the newest published release and links straight to that file. Nothing is re-hosted. Every release also publishes a <code class="inline-code">checksums.txt</code>, and the build carries a GitHub build provenance attestation — see <a href="#verify">Verify your download</a>.</p>
+          </details>
+          <details>
+            <summary>Do I need Java installed?</summary>
+            <p>No. The client ships with its own runtime and picks the right one per version.</p>
+          </details>
+          <details>
+            <summary>Why does the installer warn me?</summary>
+            <p>The build isn't code-signed yet, so Windows SmartScreen and macOS Gatekeeper ask for confirmation the first time. The full source is on GitHub if you'd rather build it.</p>
+          </details>
+        </div>
+      </section>
+
+      <section class="cta">
+        <h2>READY TO PLAY?</h2>
+        <p>Free, open source, and one click from the latest build.</p>
+        <a class="btn btn-primary btn-primary--wide" data-download
+           href="https://github.com/Mix-Studios/client-mix/releases/latest" rel="noopener">
+          <span data-label>DOWNLOAD JAR</span>
+        </a>
+      </section>
+
+      <!-- Launcher-style status bar: release data source plus the usual disclaimer -->
+      <div class="statusbar">
+        <span class="statusbar-panel">Data: github.com/Mix-Studios/client-mix/releases</span>
+        <span class="statusbar-panel statusbar-panel--end">Community project. Not affiliated with Mojang or Microsoft.</span>
       </div>
-
-      <div class="verify-cmds">
-        <h3>CHECK IT YOURSELF</h3>
-        <p>The output has to match the hash above, character for character.</p>
-        <p class="verify-os">Windows</p>
-        <pre><code>certutil -hashfile <span data-sha-name>MixClient-*.jar</span> SHA256</code></pre>
-        <p class="verify-os">macOS / Linux</p>
-        <pre><code>shasum -a 256 <span data-sha-name>MixClient-*.jar</span></code></pre>
-        <p class="verify-os">Provenance, with the GitHub CLI</p>
-        <pre><code>gh attestation verify <span data-sha-name>MixClient-*.jar</span> --repo Mix-Studios/client-mix</code></pre>
-      </div>
-    </div>
-  </section>
-
-  <section class="section" id="faq">
-    <h2 class="section-title">Questions</h2>
-    <div class="faq">
-      <details>
-        <summary>Is Mix Client free?</summary>
-        <p>Yes. It is free and open source, and there is nothing to buy inside the client.</p>
-      </details>
-      <details>
-        <summary>Which Minecraft versions work?</summary>
-        <p>Modern releases plus 1.8.9 for PvP. Switch versions from the launcher; each keeps its own mods and settings.</p>
-      </details>
-      <details>
-        <summary>Where do the downloads come from?</summary>
-        <p>The download button asks GitHub for the newest published release and links straight to that installer file. Nothing is re-hosted. Every release also publishes a <code class="inline-code">checksums.txt</code>, and the build carries a GitHub build provenance attestation — see <a href="#verify">Verify your download</a>.</p>
-      </details>
-      <details>
-        <summary>Do I need Java installed?</summary>
-        <p>No. The client ships with its own runtime and picks the right one per version.</p>
-      </details>
-      <details>
-        <summary>Why does the installer warn me?</summary>
-        <p>The build isn't code-signed yet, so Windows SmartScreen and macOS Gatekeeper ask for confirmation the first time. The full source is on GitHub if you'd rather build it.</p>
-      </details>
-    </div>
-  </section>
-
-  <section class="cta">
-    <h2>READY TO PLAY?</h2>
-    <p>Free, open source, and one click from the latest build.</p>
-    <a class="btn btn-primary btn-primary--wide" data-download
-       href="https://github.com/Mix-Studios/client-mix/releases/latest" rel="noopener">
-      <svg class="ico" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg>
-      <span class="btn-copy">
-        <strong data-label>DOWNLOAD</strong>
-        <small data-meta>Windows, macOS, Linux</small>
-      </span>
-    </a>
-  </section>
-</main>
-
-<footer class="footer">
-  <div class="footer-inner">
-    <span class="brand brand--footer">
-      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-      <span class="brand-name">MIX CLIENT</span>
-    </span>
-    <nav class="footer-links" aria-label="Footer">
-      <a href="https://github.com/Mix-Studios" target="_blank" rel="noopener">Source code</a>
-      <a href="https://github.com/Mix-Studios/client-mix/releases" target="_blank" rel="noopener">All releases</a>
-      <a href="https://github.com/Mix-Studios/Mix-Client/issues" target="_blank" rel="noopener">Report a bug</a>
-    </nav>
+    </main>
   </div>
-  <p class="footer-note">Community project. Not affiliated with Mojang or Microsoft.</p>
-</footer>
+</div>
 
 </body>
 </html>
