@@ -229,8 +229,11 @@
     const version = versionOf(state.release);
     const size = formatSize(asset.size);
 
+    const kind = state.release ? buildKind(state.release) : null;
     setBuild(`MixClient ${version}`, `${asset.name}${size ? ` · ${size}` : ""} · unsigned`);
-    setStatus(`Ready · ${target.short || target.label} build · checked ${clock()}`);
+    setStatus(kind && kind.id === "test"
+      ? `Test build · ${target.short || target.label} · checked ${clock()}`
+      : `Ready · ${target.short || target.label} build · checked ${clock()}`);
     setButtons(asset.browser_download_url, {
       label: buttonLabel(target),
       meta: [version, size, asset.name].filter(Boolean).join(" · "),

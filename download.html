@@ -180,7 +180,7 @@
     const titlebarEl = document.querySelector("[data-titlebar-title]");
     const sidebarVersionEl = document.querySelector("[data-sidebar-version]");
 
-    const state = { release: null, tag: hintTag || "", picks: [], current: null };
+    const state = { release: null, tag: hintTag || "", picks: [], current: null, isTest: false };
 
     const targetById = (id) => TARGETS.find((target) => target.id === id) || null;
 
@@ -253,7 +253,13 @@
 
       if (fileEl) fileEl.textContent = asset.name;
       if (detailEl) {
-        detailEl.textContent = [version, size, target && target.note, "in your Downloads folder"]
+        detailEl.textContent = [
+          version,
+          state.isTest ? "test build" : "",
+          size,
+          target && target.note,
+          "in your Downloads folder",
+        ]
           .filter(Boolean)
           .join(" · ");
       }
@@ -387,7 +393,9 @@
       state.tag = release.tag_name || state.tag;
       state.picks = picksFor(release);
 
-      setKind(buildKind(release));
+      const kind = buildKind(release);
+      state.isTest = kind.id === "test";
+      setKind(kind);
       setChrome(versionOf(release));
       renderFiles();
 

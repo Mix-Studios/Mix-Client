@@ -80,15 +80,23 @@ window.MixRelease = (() => {
     }[ch]));
   }
 
-  // A release is a test build when GitHub marks it pre-release, or when the tag
-  // or name says so (`Test`, `1.2.0-beta.3`, `rc1`).
+  // A release is a test build when GitHub marks it pre-release, when the tag or
+  // name says so (`Test`, `1.2.0-beta.3`, `rc1`), or when the tag is not a plain
+  // version (`v1.2.3`) at all. This mirrors the release workflow's rule, so the
+  // badge and the pre-release flag always agree.
   function buildKind(release) {
+    const tag = String((release && release.tag_name) || "").trim();
     const label = `${(release && release.tag_name) || ""} ${(release && release.name) || ""}`;
-    const isTest = Boolean(release && release.prerelease) ||
-      /test|beta|alpha|preview|snapshot|nightly|canary|\brc\d*\b/i.test(label);
+    const namedTest = /(^|[^a-z])(test|beta|alpha|preview|snapshot|nightly|canary|rc\d*)([^a-z]|$)/i.test(label);
+    const versionShaped = /^v?\d+(\.\d+)*$/i.test(tag);
+    const isTest = Boolean(release && release.prerelease) || namedTest || (tag && !versionShaped);
     return isTest
       ? { id: "test", label: "TEST BUILD" }
       : { id: "release", label: "RELEASE BUILD" };
+  }
+
+  function isTestRelease(release) {
+    return buildKind(release).id === "test";
   }
 
   function versionOf(release) {
@@ -234,14 +242,38 @@ window.MixRelease = (() => {
     return null;
   }
 
+  // The main download must never be a test build while a stable one exists, so
+  // the list is searched for the newest release that is not a pre-release.
+  function newestStableRelease(list) {
+    for (const release of list || []) {
+      if (!release || release.draft) continue;
+      if (isTestRelease(release)) continue;
+      if (picksFor(release).length) return release;
+    }
+    return null;
+  }
+
   // `null` means there is no published release, `undefined` means the API failed.
+  // A test build is only ever returned when nothing stable exists at all, so a
+  // Test tag can never take over the download button.
   async function resolveRelease() {
     const latest = await getJson(`${API}/releases/latest`);
-    if (latest.ok && latest.data) return latest.data;
+    const latestData = latest.ok ? latest.data : null;
 
-    const list = await getJson(`${API}/releases?per_page=10`);
-    if (list.ok && Array.isArray(list.data)) return newestUsableRelease(list.data);
+    if (latestData && !isTestRelease(latestData) && picksFor(latestData).length) {
+      return latestData;
+    }
 
+    const list = await getJson(`${API}/releases?per_page=20`);
+    if (list.ok && Array.isArray(list.data)) {
+      const stable = newestStableRelease(list.data);
+      if (stable) return stable;
+
+      const any = newestUsableRelease(list.data);
+      if (any) return any;
+    }
+
+    if (latestData) return latestData;
     return latest.status === 404 ? null : undefined;
   }
 
@@ -255,6 +287,7 @@ window.MixRelease = (() => {
     assetExtension,
     escapeHtml,
     buildKind,
+    isTestRelease,
     versionOf,
     pickAsset,
     picksFor,
