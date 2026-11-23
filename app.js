@@ -19,6 +19,7 @@
   const RELEASES_REPO = "Mix-Studios/client-mix";
   const API = `https://api.github.com/repos/${RELEASES_REPO}`;
   const RELEASES_URL = `https://github.com/${RELEASES_REPO}/releases/latest`;
+  const DOWNLOAD_PAGE = "download.html";
   const CACHE_KEY = "mixclient:latest-release";
   const CACHE_TTL = 10 * 60 * 1000;
 
@@ -40,6 +41,9 @@
 
   // Attachments that hold the hashes rather than a download.
   const CHECKSUM_FILE = /^(checksums?|sha-?256sums?)(\.txt|\.sha256)?$/i;
+
+  // The release we resolved, so the instructions page can name the exact file.
+  let resolved = null;
 
   const OS = detectOS();
   const OS_LABEL = { windows: "Windows", mac: "macOS", linux: "Linux", other: "your system" };
@@ -207,11 +211,12 @@
     const version = release.tag_name || release.name || "latest";
 
     if (!asset) {
-      setButtons(RELEASES_URL, {
+      setButtons(DOWNLOAD_PAGE, {
         state: "empty",
         label: "NO BUILDS YET",
         meta: `Release ${version} has no installer yet`,
       });
+      resolved = null;
       setBuild(`MixClient ${version}`, "This release has no jar attached yet.");
       setStatus(`Release ${version} has no download yet.`);
       loadChecksum(release, null);
@@ -224,6 +229,7 @@
     setStatus(`Ready · ${asset.name}`);
     // A jar runs on every OS, so naming a platform on its button would mislead.
     const isJar = assetExtension(asset.name) === ".jar";
+    resolved = { asset, version };
     setButtons(asset.browser_download_url, {
       label: isJar ? "DOWNLOAD JAR" : `DOWNLOAD FOR ${platform}`,
       meta,
@@ -285,11 +291,12 @@
       const release = await resolveRelease();
 
       if (release === null) {
-        setButtons(RELEASES_URL, {
+        setButtons(DOWNLOAD_PAGE, {
           state: "empty",
           label: "NO BUILDS YET",
           meta: "The first release appears here automatically",
         });
+        resolved = null;
         setBuild("No build published yet", "The first release appears here automatically.");
         setStatus("No release published yet.");
         return;
@@ -299,11 +306,12 @@
       writeCache(release);
       applyRelease(release);
     } catch (err) {
-      setButtons(RELEASES_URL, {
+      setButtons(DOWNLOAD_PAGE, {
         state: "empty",
         label: "OPEN LATEST RELEASE",
         meta: "Couldn't reach GitHub — try again in a moment",
       });
+      resolved = null;
       setBuild("Couldn't reach GitHub", "Press Refresh, or open the release page.");
       setStatus("Couldn't reach GitHub — press Refresh.");
     }
@@ -337,13 +345,44 @@
     });
   }
 
-  // A resolved asset URL starts the download immediately.
+  // Where the instructions page lives, carrying the file we resolved.
+  function instructionsUrl() {
+    const params = new URLSearchParams();
+    if (resolved) {
+      params.set("file", resolved.asset.name);
+      if (resolved.asset.size) params.set("size", String(resolved.asset.size));
+      if (resolved.version) params.set("version", resolved.version);
+    }
+    const query = params.toString();
+    return query ? `${DOWNLOAD_PAGE}?${query}` : DOWNLOAD_PAGE;
+  }
+
+  // Hand the file to the browser without a page navigation cancelling it:
+  // a detached link click starts the transfer in place.
+  function startDownload(url) {
+    const link = document.createElement("a");
+    link.href = url;
+    link.rel = "noopener";
+    link.style.display = "none";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
+
+  // Download first, then land on the instructions page instead of GitHub.
   buttons.forEach((el) => {
     el.addEventListener("click", (event) => {
-      const url = el.dataset.asset;
-      if (!url) return;
       event.preventDefault();
-      window.location.href = url;
+      const url = el.dataset.asset;
+
+      if (!url) {
+        window.location.href = instructionsUrl();
+        return;
+      }
+
+      startDownload(url);
+      // A short beat so the browser has begun the transfer before we leave.
+      setTimeout(() => { window.location.href = instructionsUrl(); }, 400);
     });
   });
 
