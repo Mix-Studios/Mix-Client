@@ -109,6 +109,13 @@
           Names, sizes and SHA-256 values are the ones the release page publishes. Pick any file to download it.
         </p>
 
+        <div class="release-notes" data-release hidden>
+          <p class="group-label">WHAT'S IN THIS BUILD</p>
+          <h2 class="section-title" data-release-title></h2>
+          <div class="release-notes-body" data-release-body></div>
+          <a class="verify-link" data-release-link target="_blank" rel="noopener">Read the full release on GitHub →</a>
+        </div>
+
         <p class="group-label">NOTES</p>
         <div class="notice">
           <p><strong>Unsigned build.</strong> Windows SmartScreen asks for “More info → Run anyway”. macOS blocks the
@@ -166,6 +173,10 @@
     const filesEl = document.querySelector("[data-files]");
     const macSwitchEl = document.querySelector("[data-mac-switch]");
     const macButtonsEl = document.querySelector("[data-mac-buttons]");
+    const releaseBlock = document.querySelector("[data-release]");
+    const releaseTitleEl = document.querySelector("[data-release-title]");
+    const releaseBodyEl = document.querySelector("[data-release-body]");
+    const releaseLinkEl = document.querySelector("[data-release-link]");
     const titlebarEl = document.querySelector("[data-titlebar-title]");
     const sidebarVersionEl = document.querySelector("[data-sidebar-version]");
 
@@ -343,7 +354,34 @@
       });
     }
 
+    // The release page already carries the title and notes, so show them as-is
+    // (plain text, line breaks kept) and link out for the full page.
+    function applyReleaseText(release) {
+      if (!releaseBlock) return;
+
+      const title = release.name || release.tag_name || "Release";
+      const body = String(release.body || "").trim();
+
+      if (!body && !release.name) {
+        releaseBlock.hidden = true;
+        return;
+      }
+
+      releaseBlock.hidden = false;
+      releaseBlock.dataset.kind = buildKind(release).id;
+      if (releaseTitleEl) releaseTitleEl.textContent = title;
+      if (releaseBodyEl) releaseBodyEl.textContent = body || "This release has no description.";
+
+      if (releaseLinkEl) {
+        releaseLinkEl.href = release.html_url || (release.tag_name
+          ? `https://github.com/Mix-Studios/client-mix/releases/tag/${encodeURIComponent(release.tag_name)}`
+          : "https://github.com/Mix-Studios/client-mix/releases");
+        releaseLinkEl.textContent = "Read the full release on GitHub →";
+      }
+    }
+
     function applyRelease(release) {
+      applyReleaseText(release);
       state.release = release;
       state.tag = release.tag_name || state.tag;
       state.picks = picksFor(release);

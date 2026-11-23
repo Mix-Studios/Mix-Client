@@ -218,6 +218,25 @@ code, pre { font-family: var(--mono); }
 }
 .build-hash[hidden] { display: none; }
 
+/* release title + notes, straight from the release page */
+.release-notes { margin-top: 12px; }
+.release-notes[hidden] { display: none; }
+.release-notes .section-title { margin-bottom: 4px; }
+
+.release-notes-body {
+  max-height: 260px;
+  padding: 6px;
+  overflow: auto;
+  background: var(--field);
+  border: 2px solid;
+  border-color: var(--border) var(--highlight) var(--highlight) var(--border);
+  color: #1A1A1A;
+  font-size: 11.5px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.release-notes-body:empty { display: none; }
+
 .version-row { display: flex; align-items: center; gap: 4px; }
 
 .field.combo {
