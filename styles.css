@@ -250,6 +250,18 @@ code, pre { font-family: var(--mono); }
 
 .play-note { margin: 4px 0 0; color: var(--muted); font-size: 10px; }
 
+/* Apple silicon / Intel choice, only shown on Macs when the release has both */
+.mac-choice { margin-top: 8px; }
+.mac-choice[hidden] { display: none; }
+
+.seg { display: flex; flex-wrap: wrap; gap: 4px; }
+.seg .btn.is-current {
+  background: linear-gradient(var(--accent), var(--accent-dark));
+  border-color: #7FA6DD var(--accent-2) var(--accent-2) #7FA6DD;
+  color: #fff;
+}
+.seg .btn.is-current:hover { background: linear-gradient(#3F7AD4, #24509A); color: #fff; }
+
 /* one card per platform file attached to the release */
 .platforms {
   display: grid;
@@ -269,6 +281,7 @@ code, pre { font-family: var(--mono); }
 }
 .platform:hover { background: #F7F5EC; color: var(--accent-2); }
 .platform.is-current { background: #E9EEF8; border-color: var(--accent) var(--accent-dark) var(--accent-dark) var(--accent); }
+.platform.is-current .platform-name::after { content: " · SELECTED"; }
 .platform-name { color: var(--accent-2); font-size: 10px; font-weight: bold; letter-spacing: 0.04em; }
 .platform-meta { color: var(--muted); font-size: 10px; }
 .platform-file { color: #2B2B2B; font-family: var(--mono); font-size: 9.5px; overflow-wrap: anywhere; }

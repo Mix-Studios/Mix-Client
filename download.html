@@ -67,6 +67,12 @@
              target="_blank" rel="noopener">Direct link</a>
         </div>
 
+        <div class="mac-choice" data-mac-switch hidden>
+          <p class="group-label">WHICH MAC?</p>
+          <div class="seg" data-mac-buttons></div>
+          <p class="play-note">Apple silicon is M1 and later; older Macs take the Intel build.</p>
+        </div>
+
         <p class="group-label">STEPS</p>
         <div class="steps">
           <div class="step">
@@ -180,44 +186,107 @@
       kindEl.textContent = kind === "test" ? "TEST BUILD" : "RELEASE BUILD";
     }
 
-    if (!file) {
-      if (detailEl) detailEl.textContent = "No build details passed along — use the direct link.";
-    } else {
-      const parts = [version, size > 0 ? sizeText(size) : "", "in your Downloads folder"];
-      if (fileEl) fileEl.textContent = file;
-      if (detailEl) detailEl.textContent = parts.filter(Boolean).join(" · ");
-      if (cmdEl) cmdEl.textContent = file;
+    const macSwitchEl = document.querySelector("[data-mac-switch]");
+    const macButtonsEl = document.querySelector("[data-mac-buttons]");
+    const ARCH_LABELS = { "mac-arm": "APPLE SILICON", "mac-intel": "INTEL" };
 
-      document.querySelectorAll("[data-direct]").forEach((el) => {
-        el.href = assetUrl(file);
-        el.title = `Release file · ${file}`;
-      });
+    // Every platform file in the same release, with the picked one highlighted.
+    const entries = String(files || "")
+      .split("|")
+      .map((part) => part.split(":"))
+      .filter((parts) => parts.length === 3 && parts[2])
+      .map(([id, bytes, name]) => ({ id, size: Number(bytes) || 0, name }));
 
-      // Step 02 has to match what was actually downloaded.
-      if (runEl) {
-        if (/\.jar$/i.test(file)) {
-          runEl.innerHTML = "Double-click the jar, or from the folder you saved it in run " +
-            `<code class="inline-code">java -jar ${escapeHtml(file)}</code>.`;
-        } else if (/\.(msi|exe)$/i.test(file)) {
-          runEl.textContent = "Open the installer and let it finish. Windows SmartScreen asks for More info → Run anyway the first time.";
-        } else if (/\.dmg$/i.test(file)) {
-          runEl.textContent = "Open the disk image and drag MixClient to Applications. The first launch is blocked because the app is unsigned: right-click it in Applications and choose Open.";
-        } else if (/\.(deb|rpm)$/i.test(file)) {
-          runEl.textContent = "Install it with your package tool — `sudo apt install ./<file>` on Debian/Ubuntu, `sudo dnf install <file>` on Fedora — or double-click it in your file manager.";
-        } else if (/\.appimage$/i.test(file)) {
-          runEl.textContent = "Make it executable (chmod +x <file>), then run it.";
-        }
+    let current = file ? { id: platform, size, name: file } : null;
+
+    // Step 02 has to match what was actually downloaded.
+    function setRunHint(name) {
+      if (!runEl) return;
+
+      if (/\.jar$/i.test(name)) {
+        runEl.innerHTML = "Double-click the jar, or from the folder you saved it in run " +
+          `<code class="inline-code">java -jar ${escapeHtml(name)}</code>.`;
+      } else if (/\.(msi|exe)$/i.test(name)) {
+        runEl.textContent = "Open the installer and let it finish. Windows SmartScreen asks for More info → Run anyway the first time.";
+      } else if (/\.dmg$/i.test(name)) {
+        runEl.textContent = "Open the disk image and drag MixClient to Applications. The first launch is blocked because the app is unsigned: right-click it in Applications and choose Open.";
+      } else if (/\.(deb|rpm)$/i.test(name)) {
+        runEl.textContent = "Install it with your package tool — `sudo apt install ./<file>` on Debian/Ubuntu, `sudo dnf install <file>` on Fedora — or double-click it in your file manager.";
+      } else if (/\.appimage$/i.test(name)) {
+        runEl.textContent = "Make it executable (chmod +x <file>), then run it.";
       }
     }
 
-    // Every platform file in the same release, with the clicked one highlighted.
-    if (filesEl) {
-      const entries = String(files || "")
-        .split("|")
-        .map((part) => part.split(":"))
-        .filter((parts) => parts.length === 3 && parts[2])
-        .map(([id, bytes, name]) => ({ id, size: Number(bytes) || 0, name }));
+    function highlightCards() {
+      document.querySelectorAll("[data-files] .platform").forEach((card) => {
+        card.classList.toggle("is-current", Boolean(current) && card.dataset.arch === current.id);
+      });
+    }
 
+    function applyFile(entry) {
+      if (!entry) return;
+      current = entry;
+
+      const parts = [version, entry.size > 0 ? sizeText(entry.size) : "", "in your Downloads folder"];
+      if (fileEl) fileEl.textContent = entry.name;
+      if (detailEl) detailEl.textContent = parts.filter(Boolean).join(" · ");
+      if (cmdEl) cmdEl.textContent = entry.name;
+
+      document.querySelectorAll("[data-direct]").forEach((el) => {
+        el.href = assetUrl(entry.name);
+        el.title = `Release file · ${entry.name}`;
+      });
+
+      setRunHint(entry.name);
+      highlightCards();
+      renderMacSwitch();
+    }
+
+    // Macs ship one disk image per architecture, so the page offers the choice
+    // instead of guessing; picking one also starts that download.
+    function renderMacSwitch() {
+      if (!macSwitchEl || !macButtonsEl) return;
+
+      const mac = entries.filter((entry) => entry.id === "mac-arm" || entry.id === "mac-intel");
+      const onMac = Boolean(current && current.id && current.id.indexOf("mac-") === 0);
+
+      if (!onMac || mac.length < 2) {
+        macSwitchEl.hidden = true;
+        macButtonsEl.textContent = "";
+        return;
+      }
+
+      macSwitchEl.hidden = false;
+      macButtonsEl.textContent = "";
+
+      mac.forEach((entry) => {
+        const chosen = current.id === entry.id;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn" + (chosen ? " is-current" : "");
+        btn.dataset.arch = entry.id;
+        btn.setAttribute("aria-pressed", String(chosen));
+        btn.title = entry.name;
+        btn.textContent = `${ARCH_LABELS[entry.id]} · ${sizeText(entry.size) || "size unknown"}`;
+
+        btn.addEventListener("click", () => {
+          applyFile(entry);
+          if (chosen) return;
+
+          const link = document.createElement("a");
+          link.href = assetUrl(entry.name);
+          link.rel = "noopener";
+          link.style.display = "none";
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+        });
+
+        macButtonsEl.appendChild(btn);
+      });
+    }
+
+    if (filesEl) {
       if (!entries.length) {
         const empty = document.createElement("p");
         empty.className = "platforms-empty";
@@ -228,7 +297,8 @@
       entries.forEach((entry) => {
         const [label, note] = LABELS[entry.id] || [entry.id.toUpperCase(), ""];
         const card = document.createElement("a");
-        card.className = "platform" + (entry.id === platform ? " is-current" : "");
+        card.className = "platform";
+        card.dataset.arch = entry.id;
         card.href = assetUrl(entry.name);
         card.title = `${entry.name}${entry.size ? ` · ${sizeText(entry.size)}` : ""}`;
         card.innerHTML =
@@ -239,6 +309,13 @@
         filesEl.appendChild(card);
       });
     }
+
+    if (current) {
+      applyFile(current);
+    } else if (detailEl) {
+      detailEl.textContent = "No build details passed along — use the direct link.";
+    }
+    renderMacSwitch();
   })();
 </script>
 

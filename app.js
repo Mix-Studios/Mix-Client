@@ -37,6 +37,12 @@
   const sidebarVersionEl = document.querySelector("[data-sidebar-version]");
   const kindEls = [...document.querySelectorAll("[data-build-kind]")];
   const platformsEl = document.querySelector("[data-platforms]");
+  const macChoiceEl = document.querySelector("[data-mac-choice]");
+  const macButtonsEl = document.querySelector("[data-mac-buttons]");
+
+  // Apple silicon and Intel ship as separate disk images, so Macs get to say
+  // which one they are instead of the page guessing.
+  const ARCH_LABELS = { "mac-arm": "APPLE SILICON", "mac-intel": "INTEL" };
 
   // Release integrity elements (see the "verify" section in index.html).
   const shaHashEl = document.querySelector("[data-sha-hash]");
@@ -86,7 +92,7 @@
     { id: "jar", os: "any", label: "ANY OS · JAR", short: "ANY OS", ext: [".jar"], note: "Needs Java 17 or newer" },
   ];
 
-  const state = { release: null, picks: [], primary: null };
+  const state = { release: null, picks: [], primary: null, macPick: null };
   let lastApplied = 0;
   let inFlight = null;
 
@@ -187,6 +193,10 @@
       linux: ["linux"],
       other: [],
     }[OS] || [];
+
+    // A Mac visitor who picked an architecture keeps it across auto-refreshes.
+    const chosen = OS === "mac" && state.macPick && picks.find((entry) => entry.target.id === state.macPick);
+    if (chosen) return chosen;
 
     for (const id of byOs) {
       const hit = picks.find((entry) => entry.target.id === id);
@@ -371,7 +381,80 @@
   function buttonLabel(target) {
     if (!target) return "DOWNLOAD";
     if (target.id === "jar") return "DOWNLOAD THE JAR";
+    // Two Mac files share a name, so the button says which architecture it is.
+    if (target.id === "mac-arm" || target.id === "mac-intel") return `DOWNLOAD FOR ${target.label}`;
     return `DOWNLOAD FOR ${target.short || target.label}`;
+  }
+
+  // One chosen file drives the big button, the highlighted card and the hash.
+  function selectPrimary(pick) {
+    if (!pick) return;
+    state.primary = pick;
+
+    const { target, asset } = pick;
+    const version = versionOf(state.release);
+    const size = formatSize(asset.size);
+
+    setBuild(`MixClient ${version}`, `${asset.name}${size ? ` · ${size}` : ""} · unsigned`);
+    setStatus(`Ready · ${target.short || target.label} build · checked ${clock()}`);
+    setButtons(asset.browser_download_url, {
+      label: buttonLabel(target),
+      meta: [version, size, asset.name].filter(Boolean).join(" · "),
+    });
+
+    if (platformsEl) {
+      platformsEl.querySelectorAll("[data-target]").forEach((card) => {
+        card.classList.toggle("is-current", card.dataset.target === target.id);
+      });
+    }
+
+    if (macButtonsEl) {
+      macButtonsEl.querySelectorAll("[data-arch]").forEach((btn) => {
+        const on = btn.dataset.arch === target.id;
+        btn.classList.toggle("is-current", on);
+        btn.setAttribute("aria-pressed", String(on));
+      });
+    }
+
+    loadChecksum(state.release, asset);
+  }
+
+  function renderMacChoice() {
+    if (!macChoiceEl || !macButtonsEl) return;
+
+    const macPicks = state.picks.filter(
+      (entry) => entry.target.id === "mac-arm" || entry.target.id === "mac-intel",
+    );
+
+    if (OS !== "mac" || macPicks.length < 2) {
+      macChoiceEl.hidden = true;
+      macButtonsEl.textContent = "";
+      return;
+    }
+
+    macChoiceEl.hidden = false;
+    macButtonsEl.textContent = "";
+
+    macPicks.forEach(({ target, asset }) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "btn";
+      btn.dataset.arch = target.id;
+      btn.title = asset.name;
+      btn.textContent = `${ARCH_LABELS[target.id]} · ${formatSize(asset.size) || "size unknown"}`;
+
+      const on = Boolean(state.primary && state.primary.target.id === target.id);
+      btn.classList.toggle("is-current", on);
+      btn.setAttribute("aria-pressed", String(on));
+
+      btn.addEventListener("click", () => {
+        state.macPick = target.id;
+        selectPrimary({ target, asset });
+        renderMacChoice();
+      });
+
+      macButtonsEl.appendChild(btn);
+    });
   }
 
   function applyRelease(release) {
@@ -395,37 +478,21 @@
       setBuild(`MixClient ${version}`, "This release has no files attached yet.");
       setStatus(`Release ${version} has no download yet.`);
       renderPlatforms([], null);
+      renderMacChoice();
       loadChecksum(release, null);
       return;
     }
 
     const primary = primaryPick(picks);
-    state.primary = primary;
-
-    const { target, asset } = primary;
-    const meta = [version, formatSize(asset.size), asset.name].filter(Boolean).join(" · ");
-    const size = formatSize(asset.size);
-
-    setBuild(
-      `MixClient ${version}`,
-      `${asset.name}${size ? ` · ${size}` : ""} · unsigned`,
-    );
-    setStatus(`Ready · ${target.short || target.label} build · checked ${clock()}`);
-
-    setButtons(asset.browser_download_url, {
-      label: buttonLabel(target),
-      meta,
-    });
-
-    renderPlatforms(picks, target.id);
+    renderPlatforms(picks, primary ? primary.target.id : null);
+    selectPrimary(primary);
+    renderMacChoice();
 
     if (versionChip) {
       versionChip.hidden = false;
       versionChip.textContent = version;
       versionChip.title = `Latest release: ${version} (${kind.label.toLowerCase()})`;
     }
-
-    loadChecksum(release, asset);
   }
 
   function applyEmpty() {
@@ -442,6 +509,7 @@
     setBuild("No build published yet", "The first release appears here automatically.");
     setStatus("No release published yet — this page checks again on its own.");
     renderPlatforms([], null);
+    renderMacChoice();
   }
 
   function applyFailure() {
@@ -457,6 +525,7 @@
     setBuild("Couldn't reach GitHub", "The page retries by itself; Refresh checks right now.");
     setStatus("Couldn't reach GitHub — retrying automatically.");
     renderPlatforms([], null);
+    renderMacChoice();
   }
 
   function newestUsableRelease(list) {
