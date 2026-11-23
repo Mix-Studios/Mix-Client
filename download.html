@@ -7,6 +7,7 @@
 <meta name="description" content="What to do with the Mix Client download: check the SHA-256, run the installer or jar, and sign in with Microsoft inside the client.">
 <meta name="theme-color" content="#0A246A">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23316AC5'/%3E%3Cstop offset='1' stop-color='%230A246A'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' fill='%23ECE9D8'/%3E%3Crect x='2' y='2' width='28' height='28' fill='url(%23g)'/%3E%3Ctext x='16' y='23' font-family='Tahoma,Verdana,sans-serif' font-size='18' font-weight='bold' fill='%23fff' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://api.github.com">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -50,8 +51,9 @@
         <p class="group-label">DOWNLOAD</p>
         <h1 class="section-title">Download instructions</h1>
         <p class="section-sub">
-          The download started on its own — nothing else to click. Keep this tab open while the file lands in your
-          Downloads folder, then follow the three steps below.
+          This page reads the latest release from GitHub itself, so it works as a bookmark. If you came from the play
+          screen the transfer has already started; either way, every file in the release is listed below with its
+          SHA-256, and the three steps apply to whichever one you take.
         </p>
 
         <div class="build-card">
@@ -61,7 +63,8 @@
               <span class="build-name" data-file>MixClient</span>
               <span class="build-kind" data-build-kind hidden>RELEASE BUILD</span>
             </span>
-            <span class="build-detail" data-detail>Starting the transfer…</span>
+            <span class="build-detail" data-detail>Reading the latest release…</span>
+            <span class="build-hash" data-file-hash hidden></span>
           </div>
           <a class="btn" data-direct href="https://github.com/Mix-Studios/client-mix/releases/latest"
              target="_blank" rel="noopener">Direct link</a>
@@ -79,7 +82,7 @@
             <span class="step-num">01</span>
             <h3>CHECK THE HASH</h3>
             <p>
-              Compare the SHA-256 shown on the <a href="index.html#verify">verify section</a> with the file you got.
+              Compare the SHA-256 above with the file you got — each file in the release is listed with its own.
               On Windows run <code class="inline-code">certutil -hashfile &lt;file&gt; SHA256</code>; on macOS or
               Linux, <code class="inline-code">shasum -a 256 &lt;file&gt;</code>.
             </p>
@@ -87,7 +90,7 @@
           <div class="step">
             <span class="step-num">02</span>
             <h3>RUN IT</h3>
-            <p data-run>Double-click the jar, or from the folder you saved it in run
+            <p data-run>Double-click the file you downloaded, or run the jar with
               <code class="inline-code">java -jar <span data-cmd>MixClient-&lt;version&gt;-all.jar</span></code>.</p>
           </div>
           <div class="step">
@@ -102,6 +105,9 @@
 
         <p class="group-label">ALL FILES IN THIS RELEASE</p>
         <div class="platforms" data-files></div>
+        <p class="play-note">
+          Names, sizes and SHA-256 values are the ones the release page publishes. Pick any file to download it.
+        </p>
 
         <p class="group-label">NOTES</p>
         <div class="notice">
@@ -126,78 +132,67 @@
   </div>
 </div>
 
+<script src="release.js"></script>
 <script>
-  // The download page is static; the play screen passes the resolved file, the
-  // release kind and every platform file in the query string.
+  // This page reads the release page itself, so a shared or bookmarked link
+  // shows the real version, every file and every hash. Query params are only a
+  // hint about which file the play screen just handed to the browser.
   (() => {
-    const RELEASES_REPO = "Mix-Studios/client-mix";
+    const R = window.MixRelease;
+    if (!R) return;
 
-    const LABELS = {
-      windows: ["WINDOWS", "Windows 10 / 11 installer"],
-      "mac-arm": ["MACOS · APPLE SILICON", "M-series Macs"],
-      "mac-intel": ["MACOS · INTEL", "Intel Macs"],
-      linux: ["LINUX", "DEB, RPM or AppImage"],
-      jar: ["ANY OS · JAR", "Needs Java 17 or newer"],
-    };
+    const {
+      TARGETS, detectOS, buildKind, versionOf, picksFor, primaryPick, formatSize,
+      escapeHtml, digestOf, assetUrl, readCache, writeCache, resolveRelease,
+    } = R;
+
+    const ARCH_LABELS = { "mac-arm": "APPLE SILICON", "mac-intel": "INTEL" };
+    const OS = detectOS();
 
     const params = new URLSearchParams(window.location.search);
-    const file = params.get("file");
-    const size = Number(params.get("size") || 0);
-    const version = params.get("version");
-    const tag = params.get("tag");
-    const kind = params.get("kind");
-    const platform = params.get("platform");
-    const files = params.get("files");
+    const wantedFile = params.get("file");
+    const wantedPlatform = params.get("platform");
+    const wantedSize = Number(params.get("size") || 0);
+    const hintVersion = params.get("version");
+    const hintTag = params.get("tag");
+    const hintKind = params.get("kind");
 
     const fileEl = document.querySelector("[data-file]");
     const detailEl = document.querySelector("[data-detail]");
+    const hashEl = document.querySelector("[data-file-hash]");
     const cmdEl = document.querySelector("[data-cmd]");
     const runEl = document.querySelector("[data-run]");
     const kindEl = document.querySelector("[data-build-kind]");
     const filesEl = document.querySelector("[data-files]");
-
-    const escapeHtml = (value) => String(value == null ? "" : value).replace(/[&<>"']/g, (ch) => ({
-      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-    }[ch]));
-
-    const sizeText = (bytes) => {
-      if (!bytes || bytes < 0) return "";
-      const mb = bytes / (1024 * 1024);
-      return mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb < 10 ? mb.toFixed(1) : Math.round(mb)} MB`;
-    };
-
-    const assetUrl = (name) => tag
-      ? `https://github.com/${RELEASES_REPO}/releases/download/${encodeURIComponent(tag)}/${encodeURIComponent(name)}`
-      : `https://github.com/${RELEASES_REPO}/releases/latest`;
-
-    // The title bar and sidebar footer name the release this download belongs to.
-    const bareVersion = version ? String(version).replace(/^v/i, "") : "";
-    const titlebarEl = document.querySelector("[data-titlebar-title]");
-    const sidebarVersionEl = document.querySelector("[data-sidebar-version]");
-    if (titlebarEl) titlebarEl.textContent = bareVersion ? `MixClient ${bareVersion}` : "MixClient";
-    if (sidebarVersionEl) {
-      const tag = version ? String(version) : "";
-      sidebarVersionEl.textContent = /^v/i.test(tag) ? tag : (/^\d/.test(tag) ? `v${tag}` : tag);
-    }
-
-    if (kindEl && (kind === "test" || kind === "release")) {
-      kindEl.hidden = false;
-      kindEl.dataset.kind = kind;
-      kindEl.textContent = kind === "test" ? "TEST BUILD" : "RELEASE BUILD";
-    }
-
     const macSwitchEl = document.querySelector("[data-mac-switch]");
     const macButtonsEl = document.querySelector("[data-mac-buttons]");
-    const ARCH_LABELS = { "mac-arm": "APPLE SILICON", "mac-intel": "INTEL" };
+    const titlebarEl = document.querySelector("[data-titlebar-title]");
+    const sidebarVersionEl = document.querySelector("[data-sidebar-version]");
 
-    // Every platform file in the same release, with the picked one highlighted.
-    const entries = String(files || "")
-      .split("|")
-      .map((part) => part.split(":"))
-      .filter((parts) => parts.length === 3 && parts[2])
-      .map(([id, bytes, name]) => ({ id, size: Number(bytes) || 0, name }));
+    const state = { release: null, tag: hintTag || "", picks: [], current: null };
 
-    let current = file ? { id: platform, size, name: file } : null;
+    const targetById = (id) => TARGETS.find((target) => target.id === id) || null;
+
+    function setChrome(version) {
+      const bare = version ? String(version).replace(/^v/i, "") : "";
+      if (titlebarEl) titlebarEl.textContent = bare ? `MixClient ${bare}` : "MixClient";
+      if (sidebarVersionEl) {
+        const tag = version ? String(version) : "";
+        sidebarVersionEl.textContent = /^v/i.test(tag) ? tag : (/^\d/.test(tag) ? `v${tag}` : tag);
+      }
+    }
+
+    function setKind(kind) {
+      if (!kindEl) return;
+      if (!kind) {
+        kindEl.hidden = true;
+        kindEl.removeAttribute("data-kind");
+        return;
+      }
+      kindEl.hidden = false;
+      kindEl.dataset.kind = kind.id;
+      kindEl.textContent = kind.label;
+    }
 
     // Step 02 has to match what was actually downloaded.
     function setRunHint(name) {
@@ -217,29 +212,96 @@
       }
     }
 
+    function startDownload(url) {
+      const link = document.createElement("a");
+      link.href = url;
+      link.rel = "noopener";
+      link.style.display = "none";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
+
     function highlightCards() {
       document.querySelectorAll("[data-files] .platform").forEach((card) => {
-        card.classList.toggle("is-current", Boolean(current) && card.dataset.arch === current.id);
+        card.classList.toggle(
+          "is-current",
+          Boolean(state.current) && card.dataset.file === state.current.asset.name,
+        );
       });
     }
 
-    function applyFile(entry) {
-      if (!entry) return;
-      current = entry;
+    function applyPick(pick) {
+      if (!pick) return;
+      state.current = pick;
 
-      const parts = [version, entry.size > 0 ? sizeText(entry.size) : "", "in your Downloads folder"];
-      if (fileEl) fileEl.textContent = entry.name;
-      if (detailEl) detailEl.textContent = parts.filter(Boolean).join(" · ");
-      if (cmdEl) cmdEl.textContent = entry.name;
+      const { target, asset } = pick;
+      const hash = digestOf(asset);
+      const size = formatSize(asset.size);
+      const version = state.tag || hintVersion || "";
 
+      if (fileEl) fileEl.textContent = asset.name;
+      if (detailEl) {
+        detailEl.textContent = [version, size, target && target.note, "in your Downloads folder"]
+          .filter(Boolean)
+          .join(" · ");
+      }
+      if (hashEl) {
+        hashEl.hidden = !hash;
+        hashEl.textContent = hash ? `SHA-256 ${hash}` : "";
+        if (hash) hashEl.dataset.hash = hash;
+        else delete hashEl.dataset.hash;
+      }
+      if (cmdEl) cmdEl.textContent = asset.name;
+
+      const url = asset.browser_download_url || assetUrl(asset.name, state.tag || hintTag);
       document.querySelectorAll("[data-direct]").forEach((el) => {
-        el.href = assetUrl(entry.name);
-        el.title = `Release file · ${entry.name}`;
+        el.href = url;
+        el.title = `Release file · ${asset.name}`;
       });
 
-      setRunHint(entry.name);
+      setRunHint(asset.name);
       highlightCards();
       renderMacSwitch();
+    }
+
+    function renderFiles() {
+      if (!filesEl) return;
+      filesEl.textContent = "";
+
+      if (!state.picks.length) {
+        const empty = document.createElement("p");
+        empty.className = "platforms-empty";
+        empty.textContent = "This release has no files attached yet.";
+        filesEl.appendChild(empty);
+        return;
+      }
+
+      state.picks.forEach((pick) => {
+        const { target, asset } = pick;
+        const hash = digestOf(asset);
+        const url = asset.browser_download_url || assetUrl(asset.name, state.tag || hintTag);
+
+        const card = document.createElement("a");
+        card.className = "platform";
+        card.dataset.file = asset.name;
+        card.dataset.arch = target.id;
+        card.href = url;
+        card.title = `${asset.name}${hash ? ` · sha256 ${hash}` : ""}`;
+        card.innerHTML =
+          `<span class="platform-name">${escapeHtml(target.label)}</span>` +
+          `<span class="platform-meta">${escapeHtml(target.note)} · ${escapeHtml(formatSize(asset.size) || "size unknown")}</span>` +
+          `<span class="platform-file">${escapeHtml(asset.name)}</span>` +
+          `<span class="platform-hash">${hash ? `sha256 ${escapeHtml(hash)}` : "no hash published"}</span>`;
+
+        card.addEventListener("click", (event) => {
+          event.preventDefault();
+          applyPick(pick);
+          startDownload(url);
+        });
+
+        filesEl.appendChild(card);
+      });
     }
 
     // Macs ship one disk image per architecture, so the page offers the choice
@@ -247,8 +309,10 @@
     function renderMacSwitch() {
       if (!macSwitchEl || !macButtonsEl) return;
 
-      const mac = entries.filter((entry) => entry.id === "mac-arm" || entry.id === "mac-intel");
-      const onMac = Boolean(current && current.id && current.id.indexOf("mac-") === 0);
+      const mac = state.picks.filter(
+        (pick) => pick.target.id === "mac-arm" || pick.target.id === "mac-intel",
+      );
+      const onMac = Boolean(state.current && /^mac-/.test(state.current.target.id));
 
       if (!onMac || mac.length < 2) {
         macSwitchEl.hidden = true;
@@ -259,63 +323,86 @@
       macSwitchEl.hidden = false;
       macButtonsEl.textContent = "";
 
-      mac.forEach((entry) => {
-        const chosen = current.id === entry.id;
+      mac.forEach((pick) => {
+        const chosen = state.current.asset.name === pick.asset.name;
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = "btn" + (chosen ? " is-current" : "");
-        btn.dataset.arch = entry.id;
+        btn.dataset.arch = pick.target.id;
         btn.setAttribute("aria-pressed", String(chosen));
-        btn.title = entry.name;
-        btn.textContent = `${ARCH_LABELS[entry.id]} · ${sizeText(entry.size) || "size unknown"}`;
+        btn.title = pick.asset.name;
+        btn.textContent = `${ARCH_LABELS[pick.target.id]} · ${formatSize(pick.asset.size) || "size unknown"}`;
 
         btn.addEventListener("click", () => {
-          applyFile(entry);
-          if (chosen) return;
-
-          const link = document.createElement("a");
-          link.href = assetUrl(entry.name);
-          link.rel = "noopener";
-          link.style.display = "none";
-          document.body.appendChild(link);
-          link.click();
-          link.remove();
+          const url = pick.asset.browser_download_url || assetUrl(pick.asset.name, state.tag || hintTag);
+          applyPick(pick);
+          if (!chosen) startDownload(url);
         });
 
         macButtonsEl.appendChild(btn);
       });
     }
 
-    if (filesEl) {
-      if (!entries.length) {
-        const empty = document.createElement("p");
-        empty.className = "platforms-empty";
-        empty.textContent = "Open the release page to see the files attached to this build.";
-        filesEl.appendChild(empty);
+    function applyRelease(release) {
+      state.release = release;
+      state.tag = release.tag_name || state.tag;
+      state.picks = picksFor(release);
+
+      setKind(buildKind(release));
+      setChrome(versionOf(release));
+      renderFiles();
+
+      if (!state.picks.length) {
+        if (!state.current && detailEl) detailEl.textContent = "This release has no files attached yet.";
+        return;
       }
 
-      entries.forEach((entry) => {
-        const [label, note] = LABELS[entry.id] || [entry.id.toUpperCase(), ""];
-        const card = document.createElement("a");
-        card.className = "platform";
-        card.dataset.arch = entry.id;
-        card.href = assetUrl(entry.name);
-        card.title = `${entry.name}${entry.size ? ` · ${sizeText(entry.size)}` : ""}`;
-        card.innerHTML =
-          `<span class="platform-name">${escapeHtml(label)}</span>` +
-          `<span class="platform-meta">${escapeHtml(note)}</span>` +
-          `<span class="platform-file">${escapeHtml(entry.name)}` +
-          `${entry.size ? ` · ${escapeHtml(sizeText(entry.size))}` : ""}</span>`;
-        filesEl.appendChild(card);
-      });
+      const clicked = state.current && state.picks.find((pick) => pick.asset.name === state.current.asset.name);
+      const hinted = wantedPlatform && state.picks.find((pick) => pick.target.id === wantedPlatform);
+
+      applyPick(clicked || hinted || primaryPick(state.picks, OS, null));
     }
 
-    if (current) {
-      applyFile(current);
-    } else if (detailEl) {
-      detailEl.textContent = "No build details passed along — use the direct link.";
+    async function boot() {
+      // Paint the file the play screen handed over, then correct it from GitHub.
+      if (wantedFile) {
+        applyPick({
+          target: targetById(wantedPlatform) || { id: wantedPlatform || "file", label: "THIS FILE", note: "" },
+          asset: {
+            name: wantedFile,
+            size: wantedSize,
+            browser_download_url: assetUrl(wantedFile, hintTag),
+          },
+        });
+      }
+
+      setChrome(hintVersion || "");
+      if (hintKind === "test" || hintKind === "release") {
+        setKind({ id: hintKind, label: hintKind === "test" ? "TEST BUILD" : "RELEASE BUILD" });
+      }
+
+      try {
+        let release = readCache();
+        if (!release) {
+          release = await resolveRelease();
+          if (release === undefined) throw new Error("GitHub API unavailable");
+          if (release) writeCache(release);
+        }
+
+        if (!release) {
+          if (!state.current && detailEl) detailEl.textContent = "No release is published yet.";
+          return;
+        }
+
+        applyRelease(release);
+      } catch (err) {
+        if (!state.current && detailEl) {
+          detailEl.textContent = "Couldn't reach GitHub — use the direct link, or reload in a moment.";
+        }
+      }
     }
-    renderMacSwitch();
+
+    boot();
   })();
 </script>
 

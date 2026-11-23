@@ -208,6 +208,16 @@ code, pre { font-family: var(--mono); }
   overflow-wrap: anywhere;
 }
 
+.build-hash {
+  color: #2B2B2B;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  overflow-wrap: anywhere;
+  -webkit-user-select: all;
+  user-select: all;
+}
+.build-hash[hidden] { display: none; }
+
 .version-row { display: flex; align-items: center; gap: 4px; }
 
 .field.combo {
@@ -285,6 +295,14 @@ code, pre { font-family: var(--mono); }
 .platform-name { color: var(--accent-2); font-size: 10px; font-weight: bold; letter-spacing: 0.04em; }
 .platform-meta { color: var(--muted); font-size: 10px; }
 .platform-file { color: #2B2B2B; font-family: var(--mono); font-size: 9.5px; overflow-wrap: anywhere; }
+.platform-hash {
+  color: #4A4A4A;
+  font-family: var(--mono);
+  font-size: 9px;
+  overflow-wrap: anywhere;
+  -webkit-user-select: all;
+  user-select: all;
+}
 .platforms-empty { margin: 0; color: var(--muted); font-size: 10.5px; }
 
 /* ---------- buttons ---------- */
