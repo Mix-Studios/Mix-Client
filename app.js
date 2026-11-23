@@ -39,13 +39,14 @@
   const OS_LABEL = { windows: "Windows", mac: "macOS", linux: "Linux", other: "your system" };
 
   const KNOWN_EXTENSIONS = [
-    ".exe", ".msi", ".dmg", ".pkg", ".appimage", ".deb", ".rpm", ".tar.gz", ".tgz", ".zip",
+    ".exe", ".msi", ".dmg", ".pkg", ".appimage", ".deb", ".rpm", ".tar.gz", ".tgz", ".zip", ".jar",
   ];
 
+  // The client itself ships as a cross-platform jar, so every OS can take it.
   const OS_EXTENSIONS = {
-    windows: [".exe", ".msi"],
-    mac: [".dmg", ".pkg"],
-    linux: [".appimage", ".deb", ".rpm", ".tar.gz", ".tgz"],
+    windows: [".exe", ".msi", ".jar"],
+    mac: [".dmg", ".pkg", ".jar"],
+    linux: [".appimage", ".deb", ".rpm", ".tar.gz", ".tgz", ".jar"],
     other: [".exe", ".dmg", ".appimage", ".zip", ".jar"],
   };
 
@@ -78,6 +79,8 @@
     else return -1;
 
     if (/install|setup/.test(name)) score += 5;
+    // When a build and its dependencies are separate jars, ship the runnable one.
+    if (/-all(?![a-z])|fat|shaded|bundle|standalone/.test(name)) score += 4;
     if (/win|windows/.test(name) && OS === "windows") score += 2;
     if (/mac|osx|darwin/.test(name) && OS === "mac") score += 2;
     if (/linux/.test(name) && OS === "linux") score += 2;
@@ -200,7 +203,12 @@
 
     const platform = OS_LABEL[OS] === "your system" ? "CLIENT" : OS_LABEL[OS].toUpperCase();
     const meta = [version, formatSize(asset.size), asset.name].filter(Boolean).join(" · ");
-    setButtons(asset.browser_download_url, { label: `DOWNLOAD FOR ${platform}`, meta });
+    // A jar runs on every OS, so naming a platform on its button would mislead.
+    const isJar = assetExtension(asset.name) === ".jar";
+    setButtons(asset.browser_download_url, {
+      label: isJar ? "DOWNLOAD JAR" : `DOWNLOAD FOR ${platform}`,
+      meta,
+    });
 
     if (versionChip) {
       versionChip.hidden = false;
