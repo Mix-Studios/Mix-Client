@@ -253,6 +253,14 @@ window.MixRelease = (() => {
     return null;
   }
 
+  // The full published list, newest first, for pages that show more than one
+  // build (the test-builds page). `undefined` means the API failed.
+  async function listReleases() {
+    const list = await getJson(`${API}/releases?per_page=30`);
+    if (!list.ok || !Array.isArray(list.data)) return undefined;
+    return list.data.filter((release) => release && !release.draft);
+  }
+
   // `null` means there is no published release, `undefined` means the API failed.
   // A test build is only ever returned when nothing stable exists at all, so a
   // Test tag can never take over the download button.
@@ -300,5 +308,6 @@ window.MixRelease = (() => {
     readCache,
     writeCache,
     resolveRelease,
+    listReleases,
   };
 })();

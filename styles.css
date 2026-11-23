@@ -597,6 +597,37 @@ code, pre { font-family: var(--mono); }
 .notice p:last-child { margin-bottom: 0; }
 .notice strong { color: var(--accent-2); }
 
+/* ---------- test build feed ---------- */
+
+.release-feed { display: flex; flex-direction: column; gap: 8px; }
+
+.release-entry {
+  padding: 8px;
+  background: var(--surface);
+  border: 2px solid;
+  border-color: var(--highlight) var(--shadow) var(--shadow) var(--highlight);
+}
+
+.release-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.release-meta { color: var(--muted); font-size: 10px; }
+.release-entry .build-name { font-size: 12px; }
+
+.release-body {
+  margin: 4px 0 0;
+  max-height: 130px;
+  overflow: auto;
+  padding: 4px 6px;
+  background: var(--field);
+  border: 2px solid;
+  border-color: var(--border) var(--highlight) var(--highlight) var(--border);
+  color: #2B2B2B;
+  font-size: 11px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.release-entry .platforms { margin-top: 6px; }
+
 /* ---------- status bar ---------- */
 
 .statusbar {
