@@ -189,7 +189,8 @@
         <h2 class="section-title">Verify your download</h2>
         <p class="section-sub">
           Builds are unsigned, so every release publishes a <code class="inline-code">checksums.txt</code> and a
-          GitHub build provenance attestation. Compare the hash below with the file you downloaded before you run it.
+          GitHub build provenance attestation. The same attestation covers <code class="inline-code">latest.json</code>,
+          the update feed the launcher reads. Compare the hash below with the file you downloaded before you run it.
         </p>
 
         <div class="verify">
@@ -216,6 +217,14 @@
             <pre><code>shasum -a 256 <span data-sha-name>MixClient-*.jar</span></code></pre>
             <p class="verify-os">Provenance, with the GitHub CLI</p>
             <pre><code>gh attestation verify <span data-sha-name>MixClient-*.jar</span> --repo Mix-Studios/client-mix</code></pre>
+            <p class="verify-os">The update feed</p>
+            <p>
+              <code class="inline-code">latest.json</code> carries its own attestation, so an updater can prove the
+              feed before trusting the URLs and hashes inside it — download it first, then check it:
+            </p>
+            <pre><code>curl -L -O \
+  https://github.com/Mix-Studios/client-mix/releases/latest/download/latest.json
+gh attestation verify latest.json --repo Mix-Studios/client-mix</code></pre>
           </div>
         </div>
       </section>
